@@ -2514,12 +2514,13 @@ void canread()
 
   if (inMsg.id > 0x460 && inMsg.id < 0x480)//do volt magic if ids are ones identified to be modules
   {
-    Serial.println(inMsg.id, HEX);
+    //DISABLE debugging otherwise message ids take over window
+    //Serial.println(inMsg.id, HEX);
     bms.decodecan(inMsg);//do volt magic if ids are ones identified to be modules
   }
   if (inMsg.id > 0x7E0 && inMsg.id < 0x7F0)//do volt magic if ids are ones identified to be modules
   {
-    //bms.decodecan(inMsg);//do volt magic if ids are ones identified to be modules
+    bms.decodecan(inMsg);//do volt magic if ids are ones identified to be modules
   }
   if (debug == 1)
   {
@@ -2746,7 +2747,7 @@ void sendcommand()
 {
   msg.id  = 0x200;
   msg.len = 3;
-  msg.buf[0] = 0x20;
+  msg.buf[0] = 0x02;
   msg.buf[1] = 0x00;
   msg.buf[2] = 0x00;
   Can0.write(msg);
