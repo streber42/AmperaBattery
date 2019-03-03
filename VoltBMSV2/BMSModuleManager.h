@@ -11,12 +11,6 @@ class BMSModuleManager
     void clearmodules();
     void decodecan(CAN_message_t &msg);
     void balanceCells();
-    void setupBoards();
-    void findBoards();
-    void renumberBoardIDs();
-    void clearFaults();
-    void sleepBoards();
-    void wakeBoards();
     void getAllVoltTemp();
     void readSetpoints();
     void setBatteryID(int id);
@@ -39,10 +33,11 @@ class BMSModuleManager
     /*
       void processCANMsg(CAN_FRAME &frame);
     */
-    void printAllCSV();
+    void printAllCSV(unsigned long timestamp, float current, int SOC);
     void printPackSummary();
     void printPackDetails(int digits);
 
+    bool checkcomms();
 
   private:
     float packVolt;                         // All modules added together
