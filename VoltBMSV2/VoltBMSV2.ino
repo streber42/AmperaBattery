@@ -68,6 +68,7 @@ byte bmsstatus = 0;
 
 
 int Discharge;
+int ErrorReason = 0;
 
 //variables for output control
 int pulltime = 1000;
@@ -100,6 +101,7 @@ byte rxBuf[8];
 char msgString[128];                        // Array to store serial string
 uint32_t inbox;
 signed long CANmilliamps;
+int Charged = 0;
 
 //struct can_frame canMsg;
 //MCP2515 CAN1(10); //set CS pin for can controlelr
@@ -209,6 +211,7 @@ void loadSettings()
   settings.chargerspd = 100; //ms per message
   settings.UnderDur = 5000; //ms of allowed undervoltage before throwing open stopping discharge.
   settings.CurDead = 5;// mV of dead band on current sensor
+  settings.ChargerDirect = 1; //1 - charger is always connected to HV battery // 0 - Charger is behind the contactors
 }
 
 
@@ -323,14 +326,10 @@ void setup()
     loadSettings();
   }
 
-  bms.renumberBoardIDs();
-
   Logger::setLoglevel(Logger::Off); //Debug = 0, Info = 1, Warn = 2, Error = 3, Off = 4
 
   lastUpdate = 0;
 
-  //bms.clearFaults();
-  bms.findBoards();
   digitalWrite(led, HIGH);
   bms.setPstrings(settings.Pstrings);
   bms.setSensors(settings.IgnoreTemp, settings.IgnoreVolt);
@@ -358,7 +357,6 @@ void loop()
     contcon();
     if (settings.ESSmode == 1)
     {
-      bmsstatus = Boot;
       contctrl = contctrl | 4; //turn on negative contactor
 
 
@@ -394,11 +392,14 @@ void loop()
           digitalWrite(OUT3, LOW);//turn off charger
           contctrl = contctrl & 253;
           Pretimer = millis();
+          Charged = 1;
+          SOCcharged(2);
         }
         else
         {
-          if (bms.getHighCellVolt() < (settings.StoreVsetpoint - settings.ChargeHys))
+          if (Charged == 1 && bms.getHighCellVolt() < (settings.StoreVsetpoint - settings.ChargeHys))
           {
+            Charged = 0;
             digitalWrite(OUT3, HIGH);//turn on charger
             if (Pretimer + settings.Pretime < millis())
             {
@@ -415,11 +416,14 @@ void loop()
           digitalWrite(OUT3, LOW);//turn off charger
           contctrl = contctrl & 253;
           Pretimer = millis();
+          Charged = 1;
+          SOCcharged(2);
         }
         else
         {
-          if (bms.getHighCellVolt() < (settings.ChargeVsetpoint - settings.ChargeHys))
+          if (Charged == 1 && bms.getHighCellVolt() < (settings.ChargeVsetpoint - settings.ChargeHys))
           {
+            Charged = 0;
             digitalWrite(OUT3, HIGH);//turn on charger
             if (Pretimer + settings.Pretime < millis())
             {
@@ -472,6 +476,11 @@ void loop()
 
         case (Ready):
           Discharge = 0;
+          digitalWrite(OUT4, LOW);
+          digitalWrite(OUT3, LOW);//turn off charger
+          digitalWrite(OUT2, LOW);
+          digitalWrite(OUT1, LOW);//turn off discharge
+          contctrl = 0; //turn off out 5 and 6
           if (bms.getHighCellVolt() > settings.balanceVoltage && bms.getHighCellVolt() > bms.getLowCellVolt() + settings.balanceHyst)
           {
             //bms.balanceCells();
@@ -483,7 +492,15 @@ void loop()
           }
           if (digitalRead(IN3) == HIGH && (bms.getHighCellVolt() < (settings.ChargeVsetpoint - settings.ChargeHys))) //detect AC present for charging and check not balancing
           {
-            bmsstatus = Charge;
+            if (settings.ChargerDirect == 1)
+            {
+              bmsstatus = Charge;
+            }
+            else
+            {
+              bmsstatus = Precharge;
+              Pretimer = millis();
+            }
           }
           if (digitalRead(IN1) == HIGH) //detect Key ON
           {
@@ -503,11 +520,11 @@ void loop()
           Discharge = 1;
           if (digitalRead(IN1) == LOW)//Key OFF
           {
-            digitalWrite(OUT4, LOW);
-            digitalWrite(OUT2, LOW);
-            digitalWrite(OUT1, LOW);
-            contctrl = 0; //turn off out 5 and 6
             bmsstatus = Ready;
+          }
+          if (digitalRead(IN3) == HIGH && (bms.getHighCellVolt() < (settings.ChargeVsetpoint - settings.ChargeHys))) //detect AC present for charging and check not balancing
+          {
+            bmsstatus = Charge;
           }
 
           break;
@@ -526,23 +543,36 @@ void loop()
           }
           if (bms.getHighCellVolt() > settings.ChargeVsetpoint)
           {
+            if (bms.getAvgCellVolt() > (settings.ChargeVsetpoint - settings.ChargeHys))
+            {
+              SOCcharged(2);
+            }
+            else
+            {
+              SOCcharged(1);
+            }
             digitalWrite(OUT3, LOW);//turn off charger
             bmsstatus = Ready;
           }
           if (digitalRead(IN3) == LOW)//detect AC not present for charging
           {
-            digitalWrite(OUT3, LOW);//turn off charger
             bmsstatus = Ready;
           }
           break;
 
         case (Error):
           Discharge = 0;
-
-          if (digitalRead(IN3) == HIGH) //detect AC present for charging
-          {
-            bmsstatus = Charge;
-          }
+          digitalWrite(OUT4, LOW);
+          digitalWrite(OUT3, LOW);//turn off charger
+          digitalWrite(OUT2, LOW);
+          digitalWrite(OUT1, LOW);//turn off discharge
+          contctrl = 0; //turn off out 5 and 6
+          /*
+                    if (digitalRead(IN3) == HIGH) //detect AC present for charging
+                    {
+                      bmsstatus = Charge;
+                    }
+          */
           if (digitalRead(IN1) == LOW)//Key OFF
           {
             //if (cellspresent == bms.seriescells()) //detect a fault in cells detected
@@ -565,16 +595,21 @@ void loop()
 
   if (millis() - looptime > 500)
   {
-
     looptime = millis();
     bms.getAllVoltTemp();
     //UV  check
     if (settings.ESSmode == 1)
     {
-      if (bms.getLowCellVolt() < settings.UnderVSetpoint || bms.getHighCellVolt() < settings.UnderVSetpoint)
+      if (SOCset != 0)
       {
-
-        bmsstatus = Error;
+        if (bms.getLowCellVolt() < settings.UnderVSetpoint || bms.getHighCellVolt() < settings.UnderVSetpoint)
+        {
+          SERIALCONSOLE.println("  ");
+          SERIALCONSOLE.print("   !!! Undervoltage Fault !!!");
+          SERIALCONSOLE.println("  ");
+          bmsstatus = Error;
+          ErrorReason = 1;
+        }
       }
     }
     else //In 'vehicle' mode
@@ -584,6 +619,7 @@ void loop()
         if (UnderTime > millis()) //check is last time not undervoltage is longer thatn UnderDur ago
         {
           bmsstatus = Error;
+          ErrorReason = 2;
         }
       }
       else
@@ -599,7 +635,7 @@ void loop()
     }
     if (CSVdebug != 0)
     {
-      bms.printAllCSV();
+      bms.printAllCSV(millis(), currentact, SOC);
     }
     if (inputcheck != 0)
     {
@@ -619,6 +655,7 @@ void loop()
     currentlimit();
     VEcan();
 
+    sendcommand();
     if (cellspresent == 0)
     {
       cellspresent = bms.seriescells();//set amount of connected cells, might need delay
@@ -627,17 +664,47 @@ void loop()
     {
       if (cellspresent != bms.seriescells()) //detect a fault in cells detected
       {
+        SERIALCONSOLE.println("  ");
+        SERIALCONSOLE.print("   !!! Series Cells Fault !!!");
+        SERIALCONSOLE.println("  ");
         bmsstatus = Error;
+        ErrorReason = 3;
       }
     }
     alarmupdate();
-    dashupdate();
+    if (CSVdebug != 1)
+    {
+      dashupdate();
+    }
 
     resetwdog();
   }
   if (millis() - cleartime > 5000)
   {
     //bms.clearmodules(); // Not functional
+    if (bms.checkcomms())
+    {
+      //no missing modules
+      /*
+        SERIALCONSOLE.println("  ");
+        SERIALCONSOLE.print(" ALL OK NO MODULE MISSING :) ");
+        SERIALCONSOLE.println("  ");
+      */
+      if (  bmsstatus == Error)
+      {
+        bmsstatus = Boot;
+      }
+    }
+    else
+    {
+      //missing module
+      SERIALCONSOLE.println("  ");
+      SERIALCONSOLE.print("   !!! MODULE MISSING !!!");
+      SERIALCONSOLE.println("  ");
+      bmsstatus = Error;
+      ErrorReason = 4;
+    }
+    cleartime = millis();
   }
   if (millis() - looptime1 > settings.chargerspd)
   {
@@ -836,10 +903,12 @@ void printbmsstat()
   {
     SERIALCONSOLE.print("| Key ON |");
   }
-  if (balancecells == 1)
-  {
+  /*
+    if (balancecells == 1)
+    {
     SERIALCONSOLE.print("|Balancing Active");
-  }
+    }
+  */
   SERIALCONSOLE.print("  ");
   SERIALCONSOLE.print(cellspresent);
   SERIALCONSOLE.println();
@@ -1077,6 +1146,19 @@ void updateSOC()
     SERIALCONSOLE.print(ampsecond * 0.27777777777778, 2);
     SERIALCONSOLE.println ("mAh");
 
+  }
+}
+
+void SOCcharged(int y)
+{
+  if (y == 1)
+  {
+    SOC = 95;
+    ampsecond = (settings.CAP * settings.Pstrings * 1000) / 0.27777777777778 ; //reset to full, dependant on given capacity. Need to improve with auto correction for capcity.
+  }
+  if (y == 2)
+  {
+    SOC = 100;
   }
 }
 
@@ -1782,6 +1864,20 @@ void menu()
           incomingByte = 'e';
         }
         break;
+
+      case '7':
+        if ( settings.ChargerDirect == 1)
+        {
+          settings.ChargerDirect = 0;
+        }
+        else
+        {
+          settings.ChargerDirect = 1;
+        }
+        menuload = 1;
+        incomingByte = 'e';
+        break;
+
     }
   }
 
@@ -2113,7 +2209,7 @@ void menu()
             SERIALCONSOLE.print("Elcon Charger");
             break;
           case 5:
-            SERIALCONSOLE.print("Victron Charger");
+            SERIALCONSOLE.print("Victron/SMA");
             break;
         }
         SERIALCONSOLE.println();
@@ -2122,12 +2218,23 @@ void menu()
           SERIALCONSOLE.print("6- Charger Can Msg Spd: ");
           SERIALCONSOLE.print(settings.chargerspd);
           SERIALCONSOLE.println("mS");
+          SERIALCONSOLE.println();
         }
         /*
           SERIALCONSOLE.print("7- Can Speed:");
           SERIALCONSOLE.print(settings.canSpeed/1000);
           SERIALCONSOLE.println("kbps");
         */
+        SERIALCONSOLE.print("7 - Charger HV Connection: ");
+        switch (settings.ChargerDirect)
+        {
+          case 0:
+            SERIALCONSOLE.print(" Behind Contactors");
+            break;
+          case 1:
+            SERIALCONSOLE.print("Direct To Battery HV");
+            break;
+        }
         SERIALCONSOLE.println();
         SERIALCONSOLE.println("q - Go back to menu");
         menuload = 6;
@@ -2405,9 +2512,14 @@ void canread()
       break;
   }
 
-  if (inMsg.id > 0x400 && inMsg.id < 0x800)//do volt magic if ids are ones identified to be modules
+  if (inMsg.id > 0x460 && inMsg.id < 0x480)//do volt magic if ids are ones identified to be modules
   {
+    Serial.println(inMsg.id, HEX);
     bms.decodecan(inMsg);//do volt magic if ids are ones identified to be modules
+  }
+  if (inMsg.id > 0x7E0 && inMsg.id < 0x7F0)//do volt magic if ids are ones identified to be modules
+  {
+    //bms.decodecan(inMsg);//do volt magic if ids are ones identified to be modules
   }
   if (debug == 1)
   {
@@ -2628,6 +2740,16 @@ void outputdebug()
   {
     outputstate = 0;
   }
+}
+
+void sendcommand()
+{
+  msg.id  = 0x200;
+  msg.len = 3;
+  msg.buf[0] = 0x20;
+  msg.buf[1] = 0x00;
+  msg.buf[2] = 0x00;
+  Can0.write(msg);
 }
 
 void resetwdog()

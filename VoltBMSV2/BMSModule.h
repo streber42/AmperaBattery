@@ -31,23 +31,26 @@ class BMSModule
     void setAddress(int newAddr);
     int getAddress();
     bool isExisting();
+            bool isReset();
+    void setReset(bool ex);
     void setExists(bool ex);
     void settempsensor(int tempsensor);
     void setIgnoreCell(float Ignore);
     
     
   private:
-    float cellVolt[8];          // calculated as 16 bit value * 6.250 / 16383 = volts
-    float lowestCellVolt[8];
-    float highestCellVolt[8];
+    float cellVolt[33];          // calculated as 16 bit value * 6.250 / 16383 = volts
+    float lowestCellVolt[33];
+    float highestCellVolt[33];
     float moduleVolt;          // calculated as 16 bit value * 33.333 / 16383 = volts
-    float temperatures[3];     // Don't know the proper scaling at this point
+    float temperatures[5];     // Don't know the proper scaling at this point
     float lowestTemperature;
     float highestTemperature;
     float lowestModuleVolt;
     float highestModuleVolt;
     float IgnoreCell;
     bool exists;
+    bool reset;
     int alerts;
     int faults;
     int COVFaults;
