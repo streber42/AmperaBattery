@@ -2512,13 +2512,13 @@ void canread()
       break;
   }
 
-  if (inMsg.id > 0x460 && inMsg.id < 0x480)//do volt magic if ids are ones identified to be modules
+  if (inMsg.id >= 0x460 && inMsg.id < 0x480)//do volt magic if ids are ones identified to be modules
   {
     //DISABLE debugging otherwise message ids take over window
     //Serial.println(inMsg.id, HEX);
     bms.decodecan(inMsg);//do volt magic if ids are ones identified to be modules
   }
-  if (inMsg.id > 0x7E0 && inMsg.id < 0x7F0)//do volt magic if ids are ones identified to be modules
+  if (inMsg.id >= 0x7E0 && inMsg.id < 0x7F0)//do volt magic if ids are ones identified to be modules
   {
     bms.decodecan(inMsg);//do volt magic if ids are ones identified to be modules
   }

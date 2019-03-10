@@ -72,41 +72,54 @@ int BMSModuleManager::seriescells()
 
 void BMSModuleManager::decodecan(CAN_message_t &msg)
 {
-  int Id, CMU = 0;
+  int Id, CMU, Cells = 0;
+
+  CMU = (msg.id & 0x00F)+1;
+  Id =  msg.id& 0x0F0;
+  Cells = 4;
+  /*
   switch (msg.id)
   {
     ////Module 1 Cells
     case 0x460:
       CMU = 1;
       Id = 1;
+      Cells =4;
       break;
     case 0x470:
       CMU = 1;
       Id = 2;
+      Cells =4;
       break;
     case 0x461:
       CMU = 1;
       Id = 3;
+      Cells =4;
       break;
     case 0x471:
       CMU = 1;
       Id = 4;
+      Cells =4;
       break;
     case 0x462:
       CMU = 1;
       Id = 5;
+      Cells =4;
       break;
     case 0x472:
       CMU = 1;
       Id = 6;
+      Cells =4;
       break;
     case 0x463:
       CMU = 1;
       Id = 7;
+      Cells =4;
       break;
     case 0x473:
       CMU = 1;
       Id = 8;
+      Cells =4;
       break;
     ////Module 2 Cells
     case 0x464:
@@ -141,6 +154,7 @@ void BMSModuleManager::decodecan(CAN_message_t &msg)
     case 0x478:
       CMU = 3;
       Id = 2;
+      Cells =4;
       break;
     case 0x469:
       CMU = 3;
@@ -153,10 +167,12 @@ void BMSModuleManager::decodecan(CAN_message_t &msg)
     case 0x46A:
       CMU = 3;
       Id = 5;
+      Cells =4;
       break;
     case 0x47A:
       CMU = 3;
       Id = 6;
+      Cells =4;
       break;
     ////Module 4 Cells
     case 0x46C:
@@ -243,13 +259,18 @@ void BMSModuleManager::decodecan(CAN_message_t &msg)
     default:
       break;
   }
+  */
   /*
     Serial.println();
     Serial.print(CMU);
     Serial.print(',');
     Serial.print(Id);
     Serial.println();
-  */
+    */
+  if(modules[CMU].getAddress() != CMU)
+  {
+    modules[CMU].setAddress(CMU);
+  }
   modules[CMU].setExists(true);
   modules[CMU].setReset(true);
   modules[CMU].decodecan(Id, msg);
@@ -537,19 +558,9 @@ void BMSModuleManager::printPackDetails(int digits)
       SERIALCONSOLE.print("  ");
       SERIALCONSOLE.print(modules[y].getModuleVoltage(), digits);
       SERIALCONSOLE.print("V");
-      for (int i = 1; i < 12; i++)
+      if (modules[y].getCellsUsed() > 12 )
       {
-        if (cellNum < 10) SERIALCONSOLE.print(" ");
-        SERIALCONSOLE.print("  Cell");
-        SERIALCONSOLE.print(cellNum++);
-        SERIALCONSOLE.print(": ");
-        SERIALCONSOLE.print(modules[y].getCellVoltage(i), digits);
-        SERIALCONSOLE.print("V");
-      }
-      SERIALCONSOLE.println("               ");
-      if (modules[y].getCellsUsed() > 12 && modules[y].getCellsUsed() < 24)
-      {
-        for (int i = 13; i < modules[y].getCellsUsed(); i++)
+        for (int i = 1; i < 12; i++)
         {
           if (cellNum < 10) SERIALCONSOLE.print(" ");
           SERIALCONSOLE.print("  Cell");
@@ -557,11 +568,48 @@ void BMSModuleManager::printPackDetails(int digits)
           SERIALCONSOLE.print(": ");
           SERIALCONSOLE.print(modules[y].getCellVoltage(i), digits);
           SERIALCONSOLE.print("V");
+        }
+        if (modules[y].getCellsUsed() > 12 && modules[y].getCellsUsed() < 24)
+        {
+          for (int i = 13; i < modules[y].getCellsUsed()+1; i++)
+          {
+            if (cellNum < 10) SERIALCONSOLE.print(" ");
+            SERIALCONSOLE.print("  Cell");
+            SERIALCONSOLE.print(cellNum++);
+            SERIALCONSOLE.print(": ");
+            SERIALCONSOLE.print(modules[y].getCellVoltage(i), digits);
+            SERIALCONSOLE.print("V");
+          }
+        }
+        else
+        {
+          for (int i = 13; i < 24; i++)
+          {
+            if (cellNum < 10) SERIALCONSOLE.print(" ");
+            SERIALCONSOLE.print("  Cell");
+            SERIALCONSOLE.print(cellNum++);
+            SERIALCONSOLE.print(": ");
+            SERIALCONSOLE.print(modules[y].getCellVoltage(i), digits);
+            SERIALCONSOLE.print("V");
+          }
+        }
+        SERIALCONSOLE.println("               ");
+        if (modules[y].getCellsUsed() > 25)
+        {
+          for (int i = 25; i < modules[y].getCellsUsed()+1; i++)
+          {
+            if (cellNum < 10) SERIALCONSOLE.print(" ");
+            SERIALCONSOLE.print("  Cell");
+            SERIALCONSOLE.print(cellNum++);
+            SERIALCONSOLE.print(": ");
+            SERIALCONSOLE.print(modules[y].getCellVoltage(i), digits);
+            SERIALCONSOLE.print("V");
+          }
         }
       }
       else
       {
-        for (int i = 13; i < 24; i++)
+        for (int i = 1; i < modules[y].getCellsUsed()+1 ; i++)
         {
           if (cellNum < 10) SERIALCONSOLE.print(" ");
           SERIALCONSOLE.print("  Cell");
@@ -572,30 +620,9 @@ void BMSModuleManager::printPackDetails(int digits)
         }
       }
       SERIALCONSOLE.println("               ");
-      if (modules[y].getCellsUsed() > 25)
-      {
-        for (int i = 25; i < modules[y].getCellsUsed(); i++)
-        {
-          if (cellNum < 10) SERIALCONSOLE.print(" ");
-          SERIALCONSOLE.print("  Cell");
-          SERIALCONSOLE.print(cellNum++);
-          SERIALCONSOLE.print(": ");
-          SERIALCONSOLE.print(modules[y].getCellVoltage(i), digits);
-          SERIALCONSOLE.print("V");
-        }
-      }
       SERIALCONSOLE.print(" Temp 1: ");
       SERIALCONSOLE.print(modules[y].getTemperature(0));
-      SERIALCONSOLE.print("C Temp 2: ");
-      SERIALCONSOLE.print(modules[y].getTemperature(1));
-      SERIALCONSOLE.print("C Temp 3: ");
-      SERIALCONSOLE.print(modules[y].getTemperature(2));
-      SERIALCONSOLE.print("C Temp 4: ");
-      SERIALCONSOLE.print(modules[y].getTemperature(3));
-      SERIALCONSOLE.print("C Temp 5: ");
-      SERIALCONSOLE.print(modules[y].getTemperature(4));
-      SERIALCONSOLE.println("C");
-
+      SERIALCONSOLE.println("               ");
     }
   }
 }
