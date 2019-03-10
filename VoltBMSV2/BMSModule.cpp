@@ -140,6 +140,10 @@ void BMSModule::decodecan(int Id, CAN_message_t &msg)
   */
 }
 
+int BMSModule::getCellsUsed()
+{
+  return cellsused;
+}
 
 uint8_t BMSModule::getFaults()
 {
@@ -178,11 +182,18 @@ float BMSModule::getLowCellV()
 float BMSModule::getHighCellV()
 {
   float hiVal = 0.0f;
+  cellsused = 0;
   for (int i = 0; i < 32; i++)
+  {
     if (cellVolt[i] > IgnoreCell && cellVolt[i] < 5.0)
     {
       if (cellVolt[i] > hiVal) hiVal = cellVolt[i];
     }
+    if (cellVolt[i] > IgnoreCell)
+    {
+      cellsused = i;
+    }
+  }
   return hiVal;
 }
 

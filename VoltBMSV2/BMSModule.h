@@ -36,6 +36,7 @@ class BMSModule
     void setExists(bool ex);
     void settempsensor(int tempsensor);
     void setIgnoreCell(float Ignore);
+    int getCellsUsed ();
     
     
   private:
@@ -59,4 +60,5 @@ class BMSModule
     uint8_t moduleAddress;     //1 to 0x3E
     int scells;
     int balstat;
+    int cellsused;
 };
