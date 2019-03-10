@@ -50,56 +50,56 @@ void BMSModule::decodecan(int Id, CAN_message_t &msg)
   switch (Id)
   {
     case 1:
-      cellVolt[1] = float(((msg.buf[0]  << 8)   + msg.buf[1]) * 0.00125);
+      cellVolt[1] = float((((msg.buf[0] & 0x7F)  << 8)   + msg.buf[1]) * 0.00125);
       cellVolt[2] = float(((msg.buf[2]  << 8)   + msg.buf[3]) * 0.00125);
       cellVolt[3] = float(((msg.buf[4]  << 8)   + msg.buf[5]) * 0.00125);
       cellVolt[4] = float(((msg.buf[6]  << 8)   + msg.buf[7]) * 0.00125);
       break;
 
     case 2:
-      cellVolt[5] = float(((msg.buf[0] << 8)  + msg.buf[1]) * 0.00125);
+      cellVolt[5] = float((((msg.buf[0] & 0x7F) << 8)  + msg.buf[1]) * 0.00125);
       cellVolt[6] = float(((msg.buf[2] << 8)  + msg.buf[3]) * 0.00125);
       cellVolt[7] = float(((msg.buf[4] << 8)  + msg.buf[5]) * 0.00125);
       cellVolt[8] = float(((msg.buf[6] << 8) + msg.buf[7]) * 0.00125);
       break;
 
     case 3:
-      cellVolt[9] = float(((msg.buf[0]  << 8)  + msg.buf[1]) * 0.00125);
+      cellVolt[9] = float((((msg.buf[0] & 0x7F)  << 8)  + msg.buf[1]) * 0.00125);
       cellVolt[10] = float(((msg.buf[2] << 8)   + msg.buf[3]) * 0.00125);
       cellVolt[11] = float(((msg.buf[4] << 8)   + msg.buf[5]) * 0.00125);
       cellVolt[12] = float(((msg.buf[6]  << 8)  + msg.buf[7]) * 0.00125);
       break;
 
     case 4:
-      cellVolt[13] = float(((msg.buf[0]  << 8)   + msg.buf[1]) * 0.00125);
+      cellVolt[13] = float((((msg.buf[0] & 0x7F)  << 8)   + msg.buf[1]) * 0.00125);
       cellVolt[14] = float(((msg.buf[2]  << 8)   + msg.buf[3]) * 0.00125);
       cellVolt[15] = float(((msg.buf[4]  << 8)   + msg.buf[5]) * 0.00125);
       cellVolt[16] = float(((msg.buf[6]  << 8)   + msg.buf[7]) * 0.00125);
       break;
 
     case 5:
-      cellVolt[17] = float(((msg.buf[0]  << 8)  + msg.buf[1]) * 0.00125);
+      cellVolt[17] = float((((msg.buf[0] & 0x7F)  << 8)  + msg.buf[1]) * 0.00125);
       cellVolt[18] = float(((msg.buf[2]  << 8)   + msg.buf[3]) * 0.00125);
       cellVolt[19] = float(((msg.buf[4]  << 8)  + msg.buf[5]) * 0.00125);
       cellVolt[20] = float(((msg.buf[6]  << 8)   + msg.buf[7]) * 0.00125);
       break;
 
     case 6:
-      cellVolt[21] = float(((msg.buf[0]  << 8)   + msg.buf[1]) * 0.00125);
+      cellVolt[21] = float((((msg.buf[0] & 0x7F)  << 8)   + msg.buf[1]) * 0.00125);
       cellVolt[22] = float(((msg.buf[2]  << 8)  + msg.buf[3]) * 0.00125);
       cellVolt[23] = float(((msg.buf[4]  << 8)   + msg.buf[5]) * 0.00125);
       cellVolt[24] = float(((msg.buf[6]  << 8)  + msg.buf[7]) * 0.00125);
       break;
 
     case 7:
-      cellVolt[25] = float(((msg.buf[0]  << 8)   + msg.buf[1]) * 0.00125);
+      cellVolt[25] = float((((msg.buf[0] & 0x7F)  << 8)   + msg.buf[1]) * 0.00125);
       cellVolt[26] = float(((msg.buf[2]  << 8)  + msg.buf[3]) * 0.00125);
       cellVolt[27] = float(((msg.buf[4] << 8)  + msg.buf[5]) * 0.00125);
       cellVolt[28] = float(((msg.buf[6] << 8)  + msg.buf[7]) * 0.00125);
       break;
 
     case 8:
-      cellVolt[29] = float(((msg.buf[0] << 8) + msg.buf[1]) * 0.00125);
+      cellVolt[29] = float((((msg.buf[0] & 0x7F) << 8) + msg.buf[1]) * 0.00125);
       cellVolt[30] = float(((msg.buf[2] << 8)   + msg.buf[3]) * 0.00125);
       cellVolt[31] = float(((msg.buf[4] << 8)  + msg.buf[5]) * 0.00125);
       cellVolt[32] = float(((msg.buf[6]  << 8)  + msg.buf[7]) * 0.00125);
