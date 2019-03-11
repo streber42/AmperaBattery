@@ -88,7 +88,7 @@ void BMSModule::decodecan(int Id, CAN_message_t &msg)
         cellVolt[6] = float(((msg.buf[4] << 8)  + msg.buf[5]) * 0.00125);
         break;
       case 0xE0:
-        temperatures[0] = float((msg.buf[0] << 8) + msg.buf[1]);
+        temperatures[0] = float(((msg.buf[0] << 8) + msg.buf[1])*-0.0324 + 118);
         break;
         
       default:
