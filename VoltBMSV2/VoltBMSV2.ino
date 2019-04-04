@@ -500,7 +500,7 @@ void loop()
 
       //pwmcomms();
     }
-     else
+    else
     {
       switch (bmsstatus)
       {
@@ -1473,28 +1473,7 @@ void VEcan() //communication with Victron system over CAN
 
   if (balancecells == 1)
   {
-    if (bms.getLowCellVolt() + settings.balanceHyst < bms.getHighCellVolt())
-    {
-      msg.id  = 0x3c3;
-      msg.len = 8;
-      if (bms.getLowCellVolt() < settings.balanceVoltage)
-      {
-        msg.buf[0] = highByte(uint16_t(settings.balanceVoltage * 1000));
-        msg.buf[1] = lowByte(uint16_t(settings.balanceVoltage * 1000));
-      }
-      else
-      {
-        msg.buf[0] = highByte(uint16_t(bms.getLowCellVolt() * 1000));
-        msg.buf[1] = lowByte(uint16_t(bms.getLowCellVolt() * 1000));
-      }
-      msg.buf[2] =  0x01;
-      msg.buf[3] =  0x04;
-      msg.buf[4] =  0x03;
-      msg.buf[5] =  0x00;
-      msg.buf[6] =  0x00;
-      msg.buf[7] = 0x00;
-      Can0.write(msg);
-    }
+    bms.balanceCells();
   }
 
 }

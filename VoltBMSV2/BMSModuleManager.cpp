@@ -74,12 +74,12 @@ void BMSModuleManager::decodecan(CAN_message_t &msg)
 {
   int Id, CMU, Cells = 0;
 
-  CMU = (msg.id & 0x00F)+1;
-  Id =  msg.id& 0x0F0;
+  CMU = (msg.id & 0x00F) + 1;
+  Id =  msg.id & 0x0F0;
   Cells = 4;
   /*
-  switch (msg.id)
-  {
+    switch (msg.id)
+    {
     ////Module 1 Cells
     case 0x460:
       CMU = 1;
@@ -258,7 +258,7 @@ void BMSModuleManager::decodecan(CAN_message_t &msg)
       break;
     default:
       break;
-  }
+    }
   */
   /*
     Serial.println();
@@ -266,8 +266,8 @@ void BMSModuleManager::decodecan(CAN_message_t &msg)
     Serial.print(',');
     Serial.print(Id);
     Serial.println();
-    */
-  if(modules[CMU].getAddress() != CMU)
+  */
+  if (modules[CMU].getAddress() != CMU)
   {
     modules[CMU].setAddress(CMU);
   }
@@ -292,6 +292,63 @@ void BMSModuleManager::getAllVoltTemp()
   packVolt = packVolt / Pstring;
   if (packVolt > highestPackVolt) highestPackVolt = packVolt;
   if (packVolt < lowestPackVolt) lowestPackVolt = packVolt;
+}
+
+void BMSModuleManager::balanceCells()
+{
+  for (int c = 0; c < 8; c++)
+  {
+    msg.buf[c] = 0;
+  }
+  for (int y = 1; y < 9; y++)
+  {
+    if (modules[y].isExisting() == 1)
+    {
+      int balance = 0;
+      for (int i = 1; i < 9; i++)
+      {
+
+        if (getLowCellVolt() < modules[y].getCellVoltage(i))
+        {
+          balance = balance | (1 << i);
+        }
+      }
+      msg.buf[y - 1] = balance;
+    }
+  }
+  msg.id  = 0x300;
+  msg.len = 8;
+  Can0.write(msg);
+
+  for (int c = 0; c < 8; c++)
+  {
+    msg.buf[c] = 0;
+  }
+  for (int y = 1; y < 9; y++)
+  {
+    if (modules[y].isExisting() == 1)
+    {
+      int balance = 0;
+      for (int i = 1; i < 9; i++)
+      {
+        if (getLowCellVolt() < modules[y].getCellVoltage(i))
+        {
+          if (y < 11 || i < 4)
+          {
+            balance = balance | (1 << i);
+          }
+          else
+          {
+            balance = balance | (1 << (i+1));
+          }
+        }
+      }
+      msg.buf[y - 8] = balance;
+    }
+  }
+  msg.id  = 0x310;
+  msg.len = 5;
+  Can0.write(msg);
 }
 
 float BMSModuleManager::getLowCellVolt()
@@ -571,7 +628,7 @@ void BMSModuleManager::printPackDetails(int digits)
         }
         if (modules[y].getCellsUsed() > 12 && modules[y].getCellsUsed() < 24)
         {
-          for (int i = 13; i < modules[y].getCellsUsed()+1; i++)
+          for (int i = 13; i < modules[y].getCellsUsed() + 1; i++)
           {
             if (cellNum < 10) SERIALCONSOLE.print(" ");
             SERIALCONSOLE.print("  Cell");
@@ -596,7 +653,7 @@ void BMSModuleManager::printPackDetails(int digits)
         SERIALCONSOLE.println("               ");
         if (modules[y].getCellsUsed() > 25)
         {
-          for (int i = 25; i < modules[y].getCellsUsed()+1; i++)
+          for (int i = 25; i < modules[y].getCellsUsed() + 1; i++)
           {
             if (cellNum < 10) SERIALCONSOLE.print(" ");
             SERIALCONSOLE.print("  Cell");
@@ -609,7 +666,7 @@ void BMSModuleManager::printPackDetails(int digits)
       }
       else
       {
-        for (int i = 1; i < modules[y].getCellsUsed()+1 ; i++)
+        for (int i = 1; i < modules[y].getCellsUsed() + 1 ; i++)
         {
           if (cellNum < 10) SERIALCONSOLE.print(" ");
           SERIALCONSOLE.print("  Cell");

@@ -40,6 +40,7 @@ class BMSModuleManager
     bool checkcomms();
 
   private:
+  CAN_message_t msg;
     float packVolt;                         // All modules added together
     int Pstring;
     float LowCellVolt;
