@@ -54,38 +54,38 @@ void BMSModule::decodecan(int Id, CAN_message_t &msg)
       case 0x60:
         if ((((msg.buf[0] & 0x7F)  << 8)   + msg.buf[1]) > 0)
         {
-          cellVolt[1] = float((((msg.buf[0] & 0x7F)  << 8)   + msg.buf[1]) * 0.00125);
+          cellVolt[1] = float((((msg.buf[0] & 0x0F)  << 8)   + msg.buf[1]) * 0.00125);
         }
         if (((msg.buf[2]  << 8)   + msg.buf[3]) > 0)
         {
-          cellVolt[2] = float(((msg.buf[2]  << 8)   + msg.buf[3]) * 0.00125);
+          cellVolt[2] = float((((msg.buf[2] & 0x0F)  << 8)   + msg.buf[3]) * 0.00125);
         }
         if (((msg.buf[4]  << 8)   + msg.buf[5]) > 0)
         {
-          cellVolt[3] = float(((msg.buf[4]  << 8)   + msg.buf[5]) * 0.00125);
+          cellVolt[3] = float((((msg.buf[4] & 0x0F)  << 8)   + msg.buf[5]) * 0.00125);
         }
         if (((msg.buf[6]  << 8)   + msg.buf[7]) > 0)
         {
-          cellVolt[4] = float(((msg.buf[6]  << 8)   + msg.buf[7]) * 0.00125);
+          cellVolt[4] = float((((msg.buf[6] & 0x0F)  << 8)   + msg.buf[7]) * 0.00125);
         }
         break;
 
       case 0x70:
-        if ((((msg.buf[0] & 0x7F)  << 8)   + msg.buf[1]) > 0)
+        if ((((msg.buf[0] & 0x0F)  << 8)   + msg.buf[1]) > 0)
         {
-          cellVolt[5] = float((((msg.buf[0] & 0x7F) << 8)  + msg.buf[1]) * 0.00125);
+          cellVolt[5] = float((((msg.buf[0] & 0x0F) << 8)  + msg.buf[1]) * 0.00125);
         }
         if (((msg.buf[2]  << 8)   + msg.buf[3]) > 0)
         {
-          cellVolt[6] = float(((msg.buf[2] << 8)  + msg.buf[3]) * 0.00125);
+          cellVolt[6] = float((((msg.buf[2] & 0x0F) << 8)  + msg.buf[3]) * 0.00125);
         }
         if (((msg.buf[4]  << 8)   + msg.buf[5]) > 0)
         {
-          cellVolt[7] = float(((msg.buf[4] << 8)  + msg.buf[5]) * 0.00125);
+          cellVolt[7] = float((((msg.buf[4] & 0x0F) << 8)  + msg.buf[5]) * 0.00125);
         }
         if (((msg.buf[6]  << 8)   + msg.buf[7]) > 0)
         {
-          cellVolt[8] = float(((msg.buf[6] << 8) + msg.buf[7]) * 0.00125);
+          cellVolt[8] = float((((msg.buf[6] & 0x0F) << 8) + msg.buf[7]) * 0.00125);
         }
         break;
 
@@ -102,17 +102,17 @@ void BMSModule::decodecan(int Id, CAN_message_t &msg)
     switch (Id)
     {
       case 0x60:
-        if ((((msg.buf[0] & 0x7F)  << 8)   + msg.buf[1]) > 0)
+        if ((((msg.buf[0] & 0x0F)  << 8)   + msg.buf[1]) > 0)
         {
-          cellVolt[1] = float((((msg.buf[0] & 0x7F)  << 8)   + msg.buf[1]) * 0.00125);
+          cellVolt[1] = float((((msg.buf[0] & 0x0F)  << 8)   + msg.buf[1]) * 0.00125);
         }
-        if (((msg.buf[2]  << 8)   + msg.buf[3]) > 0)
+        if ((((msg.buf[2] & 0x0F)  << 8)   + msg.buf[3]) > 0)
         {
-          cellVolt[2] = float(((msg.buf[2]  << 8)   + msg.buf[3]) * 0.00125);
+          cellVolt[2] = float((((msg.buf[2] & 0x0F)  << 8)   + msg.buf[3]) * 0.00125);
         }
-        if (((msg.buf[4]  << 8)   + msg.buf[5]) > 0)
+        if ((((msg.buf[4] & 0x0F)  << 8)   + msg.buf[5]) > 0)
         {
-          cellVolt[3] = float(((msg.buf[4]  << 8)   + msg.buf[5]) * 0.00125);
+          cellVolt[3] = float((((msg.buf[4] & 0x0F)  << 8)   + msg.buf[5]) * 0.00125);
         }
         break;
 
