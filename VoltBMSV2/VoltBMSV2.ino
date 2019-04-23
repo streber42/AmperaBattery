@@ -277,6 +277,8 @@ void setup()
   SERIALCONSOLE.println("Starting up!");
   SERIALCONSOLE.println("SimpBMS V2 Outlander");
 
+ Serial2.begin(115200);
+
   // Display reason the Teensy was last reset
   Serial.println();
   Serial.println("Reason for last Reset: ");
