@@ -719,7 +719,7 @@ void loop()
     VEcan();
 
     sendcommand();
-       if (cellspresent == 0 && SOCset == 1)
+    if (cellspresent == 0 && SOCset == 1)
     {
       cellspresent = bms.seriescells();
       bms.setSensors(settings.IgnoreTemp, settings.IgnoreVolt);
@@ -745,15 +745,14 @@ void loop()
   }
   if (millis() - cleartime > 5000)
   {
+    /*
     //bms.clearmodules(); // Not functional
     if (bms.checkcomms())
     {
       //no missing modules
-      /*
         SERIALCONSOLE.println("  ");
         SERIALCONSOLE.print(" ALL OK NO MODULE MISSING :) ");
         SERIALCONSOLE.println("  ");
-      */
       if (  bmsstatus == Error)
       {
         bmsstatus = Boot;
@@ -768,6 +767,7 @@ void loop()
       bmsstatus = Error;
       ErrorReason = 4;
     }
+    */
     cleartime = millis();
   }
   if (millis() - looptime1 > settings.chargerspd)
