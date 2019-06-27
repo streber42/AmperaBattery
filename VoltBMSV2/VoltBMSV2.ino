@@ -9,7 +9,7 @@
   the following conditions:
   The above copyright notice and this permission notice shall be included
   in all copies or substantial portions of the Software.
-  
+
   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -181,7 +181,7 @@ int debugdigits = 2; //amount of digits behind decimal for voltage reading
 ADC *adc = new ADC(); // adc object
 void loadSettings()
 {
-  Logger::console("Resetting to factory defaults");
+  Logger::console(0, "Resetting to factory defaults");
   settings.checksum = 2;
   settings.canSpeed = 125000;
   settings.batteryID = 0x01; //in the future should be 0xFF to force it to ask for an address
@@ -233,6 +233,7 @@ void loadSettings()
   settings.UnderDur = 5000; //ms of allowed undervoltage before throwing open stopping discharge.
   settings.CurDead = 5;// mV of dead band on current sensor
   settings.ChargerDirect = 1; //1 - charger is always connected to HV battery // 0 - Charger is behind the contactors
+  settings.disp = 0; // 1 - display is used 0 - mirror serial data onto serial bus
 }
 
 
@@ -298,7 +299,7 @@ void setup()
   SERIALCONSOLE.println("Starting up!");
   SERIALCONSOLE.println("SimpBMS V2 Outlander");
 
- Serial2.begin(115200);
+  Serial2.begin(115200);
 
   // Display reason the Teensy was last reset
   Serial.println();
@@ -694,7 +695,7 @@ void loop()
     if (debug != 0)
     {
       printbmsstat();
-      bms.printPackDetails(debugdigits);
+      bms.printPackDetails(debugdigits, 0);
     }
     if (CSVdebug != 0)
     {
@@ -746,9 +747,9 @@ void loop()
   if (millis() - cleartime > 5000)
   {
     /*
-    //bms.clearmodules(); // Not functional
-    if (bms.checkcomms())
-    {
+      //bms.clearmodules(); // Not functional
+      if (bms.checkcomms())
+      {
       //no missing modules
         SERIALCONSOLE.println("  ");
         SERIALCONSOLE.print(" ALL OK NO MODULE MISSING :) ");
@@ -757,16 +758,16 @@ void loop()
       {
         bmsstatus = Boot;
       }
-    }
-    else
-    {
+      }
+      else
+      {
       //missing module
       SERIALCONSOLE.println("  ");
       SERIALCONSOLE.print("   !!! MODULE MISSING !!!");
       SERIALCONSOLE.println("  ");
       bmsstatus = Error;
       ErrorReason = 4;
-    }
+      }
     */
     cleartime = millis();
   }
@@ -1659,6 +1660,12 @@ void menu()
         incomingByte = 'd';
         break;
 
+      case '0':
+        menuload = 1;
+        settings.disp = !settings.disp;
+        incomingByte = 'd';
+        break;
+
       case 113: //q for quite menu
 
         menuload = 0;
@@ -2391,6 +2398,15 @@ void menu()
         SERIALCONSOLE.println(CSVdebug);
         SERIALCONSOLE.print("9 - Decimal Places to Show :");
         SERIALCONSOLE.println(debugdigits);
+        SERIALCONSOLE.print("0 - Display or Serial Mirror :");
+        if (settings.disp == 1)
+        {
+          SERIALCONSOLE.println(" Display Data");
+        }
+        else
+        {
+          SERIALCONSOLE.println(" Serial Mirror");
+        }
         SERIALCONSOLE.println("q - Go back to menu");
         menuload = 4;
         break;
@@ -2857,88 +2873,240 @@ void pwmcomms()
 
 void dashupdate()
 {
-  Serial2.write("stat.txt=");
-  Serial2.write(0x22);
-  switch (bmsstatus)
+  if (settings.disp == 1)
   {
-    case (Boot):
-      Serial2.print(" Boot ");
-      break;
+    Serial2.write("stat.txt=");
+    Serial2.write(0x22);
+    switch (bmsstatus)
+    {
+      case (Boot):
+        Serial2.print(" Boot ");
+        break;
 
-    case (Ready):
-      Serial2.print(" Ready ");
-      break;
+      case (Ready):
+        Serial2.print(" Ready ");
+        break;
 
-    case (Precharge):
-      Serial2.print(" Precharge ");
-      break;
+      case (Precharge):
+        Serial2.print(" Precharge ");
+        break;
 
-    case (Drive):
-      Serial2.print(" Drive ");
-      break;
+      case (Drive):
+        Serial2.print(" Drive ");
+        break;
 
-    case (Charge):
-      Serial2.print(" Charge ");
-      break;
+      case (Charge):
+        Serial2.print(" Charge ");
+        break;
 
-    case (Error):
-      Serial2.print(" Error ");
-      break;
+      case (Error):
+        Serial2.print(" Error ");
+        break;
+    }
+    Serial2.write(0x22);
+    Serial2.write(0xff);  // We always have to send this three lines after each command sent to the nextion display.
+    Serial2.write(0xff);
+    Serial2.write(0xff);
+    Serial2.print("soc.val=");
+    Serial2.print(SOC);
+    Serial2.write(0xff);  // We always have to send this three lines after each command sent to the nextion display.
+    Serial2.write(0xff);
+    Serial2.write(0xff);
+    Serial2.print("soc1.val=");
+    Serial2.print(SOC);
+    Serial2.write(0xff);  // We always have to send this three lines after each command sent to the nextion display.
+    Serial2.write(0xff);
+    Serial2.write(0xff);
+    Serial2.print("current.val=");
+    Serial2.print(abs(currentact) / 1000, 0);
+    Serial2.write(0xff);  // We always have to send this three lines after each command sent to the nextion display.
+    Serial2.write(0xff);
+    Serial2.write(0xff);
+    Serial2.print("temp.val=");
+    Serial2.print(bms.getAvgTemperature(), 0);
+    Serial2.write(0xff);  // We always have to send this three lines after each command sent to the nextion display.
+    Serial2.write(0xff);
+    Serial2.write(0xff);
+    Serial2.print("templow.val=");
+    Serial2.print(bms.getLowTemperature(), 0);
+    Serial2.write(0xff);  // We always have to send this three lines after each command sent to the nextion display.
+    Serial2.write(0xff);
+    Serial2.write(0xff);
+    Serial2.print("temphigh.val=");
+    Serial2.print(bms.getHighTemperature(), 0);
+    Serial2.write(0xff);  // We always have to send this three lines after each command sent to the nextion display.
+    Serial2.write(0xff);
+    Serial2.write(0xff);
+    Serial2.print("volt.val=");
+    Serial2.print(bms.getPackVoltage(), 0);
+    Serial2.write(0xff);  // We always have to send this three lines after each command sent to the nextion display.
+    Serial2.write(0xff);
+    Serial2.write(0xff);
+    Serial2.print("lowcell.val=");
+    Serial2.print(bms.getLowCellVolt() * 1000, 0);
+    Serial2.write(0xff);  // We always have to send this three lines after each command sent to the nextion display.
+    Serial2.write(0xff);
+    Serial2.write(0xff);
+    Serial2.print("highcell.val=");
+    Serial2.print(bms.getHighCellVolt() * 1000, 0);
+    Serial2.write(0xff);  // We always have to send this three lines after each command sent to the nextion display.
+    Serial2.write(0xff);
+    Serial2.write(0xff);
+    Serial2.print("firm.val=");
+    Serial2.print(firmver);
+    Serial2.write(0xff);  // We always have to send this three lines after each command sent to the nextion display.
+    Serial2.write(0xff);
+    Serial2.write(0xff);
   }
-  Serial2.write(0x22);
-  Serial2.write(0xff);  // We always have to send this three lines after each command sent to the nextion display.
-  Serial2.write(0xff);
-  Serial2.write(0xff);
-  Serial2.print("soc.val=");
-  Serial2.print(SOC);
-  Serial2.write(0xff);  // We always have to send this three lines after each command sent to the nextion display.
-  Serial2.write(0xff);
-  Serial2.write(0xff);
-  Serial2.print("soc1.val=");
-  Serial2.print(SOC);
-  Serial2.write(0xff);  // We always have to send this three lines after each command sent to the nextion display.
-  Serial2.write(0xff);
-  Serial2.write(0xff);
-  Serial2.print("current.val=");
-  Serial2.print(abs(currentact) / 1000, 0);
-  Serial2.write(0xff);  // We always have to send this three lines after each command sent to the nextion display.
-  Serial2.write(0xff);
-  Serial2.write(0xff);
-  Serial2.print("temp.val=");
-  Serial2.print(bms.getAvgTemperature(), 0);
-  Serial2.write(0xff);  // We always have to send this three lines after each command sent to the nextion display.
-  Serial2.write(0xff);
-  Serial2.write(0xff);
-  Serial2.print("templow.val=");
-  Serial2.print(bms.getLowTemperature(), 0);
-  Serial2.write(0xff);  // We always have to send this three lines after each command sent to the nextion display.
-  Serial2.write(0xff);
-  Serial2.write(0xff);
-  Serial2.print("temphigh.val=");
-  Serial2.print(bms.getHighTemperature(), 0);
-  Serial2.write(0xff);  // We always have to send this three lines after each command sent to the nextion display.
-  Serial2.write(0xff);
-  Serial2.write(0xff);
-  Serial2.print("volt.val=");
-  Serial2.print(bms.getPackVoltage(), 0);
-  Serial2.write(0xff);  // We always have to send this three lines after each command sent to the nextion display.
-  Serial2.write(0xff);
-  Serial2.write(0xff);
-  Serial2.print("lowcell.val=");
-  Serial2.print(bms.getLowCellVolt() * 1000, 0);
-  Serial2.write(0xff);  // We always have to send this three lines after each command sent to the nextion display.
-  Serial2.write(0xff);
-  Serial2.write(0xff);
-  Serial2.print("highcell.val=");
-  Serial2.print(bms.getHighCellVolt() * 1000, 0);
-  Serial2.write(0xff);  // We always have to send this three lines after each command sent to the nextion display.
-  Serial2.write(0xff);
-  Serial2.write(0xff);
-  Serial2.print("firm.val=");
-  Serial2.print(firmver);
-  Serial2.write(0xff);  // We always have to send this three lines after each command sent to the nextion display.
-  Serial2.write(0xff);
-  Serial2.write(0xff);
+  else
+  {
+    Serial2.println();
+    Serial2.println();
+    Serial2.println();
+    Serial2.print("BMS Status : ");
+    if (settings.ESSmode == 1)
+    {
+      Serial2.print("ESS Mode ");
+
+      if (bms.getLowCellVolt() < settings.UnderVSetpoint)
+      {
+        Serial2.print(": UnderVoltage ");
+      }
+      if (bms.getHighCellVolt() > settings.OverVSetpoint)
+      {
+        Serial2.print(": OverVoltage ");
+      }
+      if ((bms.getHighCellVolt() - bms.getLowCellVolt()) > settings.CellGap)
+      {
+        Serial2.print(": Cell Imbalance ");
+      }
+      if (bms.getAvgTemperature() > settings.OverTSetpoint)
+      {
+        Serial2.print(": Over Temp ");
+      }
+      if (bms.getAvgTemperature() < settings.UnderTSetpoint)
+      {
+        Serial2.print(": Under Temp ");
+      }
+      if (storagemode == 1)
+      {
+        if (bms.getLowCellVolt() > settings.StoreVsetpoint)
+        {
+          Serial2.print(": OverVoltage Storage ");
+          Serial2.print(": UNhappy:");
+        }
+        else
+        {
+          Serial2.print(": Happy ");
+        }
+      }
+      else
+      {
+        if (bms.getLowCellVolt() > settings.UnderVSetpoint && bms.getHighCellVolt() < settings.OverVSetpoint)
+        {
+
+          if ( bmsstatus == Error)
+          {
+            Serial2.print(": UNhappy:");
+          }
+          else
+          {
+            Serial2.print(": Happy ");
+          }
+        }
+      }
+    }
+    else
+    {
+      Serial2.print(bmsstatus);
+      switch (bmsstatus)
+      {
+        case (Boot):
+          Serial2.print(" Boot ");
+          break;
+
+        case (Ready):
+          Serial2.print(" Ready ");
+          break;
+
+        case (Precharge):
+          Serial2.print(" Precharge ");
+          break;
+
+        case (Drive):
+          Serial2.print(" Drive ");
+          break;
+
+        case (Charge):
+          Serial2.print(" Charge ");
+          break;
+
+        case (Error):
+          Serial2.print(" Error ");
+          break;
+      }
+    }
+    Serial2.print("  ");
+    if (digitalRead(IN3) == HIGH)
+    {
+      Serial2.print("| AC Present |");
+    }
+    if (digitalRead(IN1) == HIGH)
+    {
+      Serial2.print("| Key ON |");
+    }
+    if (balancecells == 1)
+    {
+      Serial2.print("|Balancing Active");
+    }
+    Serial2.print("  ");
+    Serial2.print(cellspresent);
+    Serial2.println();
+    Serial2.print("Out:");
+    Serial2.print(digitalRead(OUT1));
+    Serial2.print(digitalRead(OUT2));
+    Serial2.print(digitalRead(OUT3));
+    Serial2.print(digitalRead(OUT4));
+    Serial2.print(" Cont:");
+    if ((contstat & 1) == 1)
+    {
+      Serial2.print("1");
+    }
+    else
+    {
+      Serial2.print("0");
+    }
+    if ((contstat & 2) == 2)
+    {
+      Serial2.print("1");
+    }
+    else
+    {
+      Serial2.print("0");
+    }
+    if ((contstat & 4) == 4)
+    {
+      Serial2.print("1");
+    }
+    else
+    {
+      Serial2.print("0");
+    }
+    if ((contstat & 8) == 8)
+    {
+      Serial2.print("1");
+    }
+    else
+    {
+      Serial2.print("0");
+    }
+    Serial2.print(" In:");
+    Serial2.print(digitalRead(IN1));
+    Serial2.print(digitalRead(IN2));
+    Serial2.print(digitalRead(IN3));
+    Serial2.print(digitalRead(IN4));
+    bms.printPackDetails(debugdigits, 1);
+  }
 }
 
 void chargercomms()

@@ -35,7 +35,7 @@ class BMSModuleManager
     */
     void printAllCSV(unsigned long timestamp, float current, int SOC);
     void printPackSummary();
-    void printPackDetails(int digits);
+    void printPackDetails(int digits, bool port);
 
     bool checkcomms();
 

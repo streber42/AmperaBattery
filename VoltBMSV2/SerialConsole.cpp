@@ -58,26 +58,26 @@ void SerialConsole::loop() {
     {
         prettyCounter = millis();
         if (whichDisplay == 0) bms.printPackSummary();
-        if (whichDisplay == 1) bms.printPackDetails(2);
+        if (whichDisplay == 1) bms.printPackDetails(2,0);
     }
 }
               
 void SerialConsole::printMenu() {   
-    Logger::console("\n*************SYSTEM MENU *****************");
-    Logger::console("Enable line endings of some sort (LF, CR, CRLF)");
-    Logger::console("Most commands case sensitive\n");
-    Logger::console("GENERAL SYSTEM CONFIGURATION\n");
-    Logger::console("   h = help (displays this message)");
-    Logger::console("   S = Sleep all boards");
-    Logger::console("   W = Wake up all boards");
-    Logger::console("   C = Clear all board faults");
-    Logger::console("   F = Find all connected boards");
-    Logger::console("   R = Renumber connected boards in sequence");
-    Logger::console("   B = Attempt balancing for 5 seconds");
-    Logger::console("   p = Toggle output of pack summary every 3 seconds");
-    Logger::console("   d = Toggle output of pack details every 3 seconds");
+    Logger::console(0,"\n*************SYSTEM MENU *****************");
+    Logger::console(0,"Enable line endings of some sort (LF, CR, CRLF)");
+    Logger::console(0,"Most commands case sensitive\n");
+    Logger::console(0,"GENERAL SYSTEM CONFIGURATION\n");
+    Logger::console(0,"   h = help (displays this message)");
+    Logger::console(0,"   S = Sleep all boards");
+    Logger::console(0,"   W = Wake up all boards");
+    Logger::console(0,"   C = Clear all board faults");
+    Logger::console(0,"   F = Find all connected boards");
+    Logger::console(0,"   R = Renumber connected boards in sequence");
+    Logger::console(0,"   B = Attempt balancing for 5 seconds");
+    Logger::console(0,"   p = Toggle output of pack summary every 3 seconds");
+    Logger::console(0,"   d = Toggle output of pack details every 3 seconds");
   
-    Logger::console("   LOGLEVEL=%i - set log level (0=debug, 1=info, 2=warn, 3=error, 4=off)", Logger::getLogLevel());
+    Logger::console(0,"   LOGLEVEL=%i - set log level (0=debug, 1=info, 2=warn, 3=error, 4=off)", Logger::getLogLevel());
 
     float OverVSetpoint;
     float UnderVSetpoint;
@@ -140,11 +140,11 @@ void SerialConsole::handleShortCmd()
             printPrettyDisplay = !printPrettyDisplay;
             if (printPrettyDisplay)
             {
-                Logger::console("Enabling pack summary display, 5 second interval");
+                Logger::console(0,"Enabling pack summary display, 5 second interval");
             }
             else
             {
-                Logger::console("No longer displaying pack summary.");
+                Logger::console(0,"No longer displaying pack summary.");
             }
         }
         break;
@@ -156,11 +156,11 @@ void SerialConsole::handleShortCmd()
             whichDisplay = 1;
             if (printPrettyDisplay)
             {
-                Logger::console("Enabling pack details display, 5 second interval");
+                Logger::console(0,"Enabling pack details display, 5 second interval");
             }
             else
             {
-                Logger::console("No longer displaying pack details.");
+                Logger::console(0,"No longer displaying pack details.");
             }            
         }
         break;
@@ -221,6 +221,3 @@ void SerialConsole::handleShortCmd()
         }
     }     
  */
-
-
-

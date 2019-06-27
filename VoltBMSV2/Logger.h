@@ -39,7 +39,7 @@ public:
     static void info(char *, ...);
     static void warn(char *, ...);
     static void error(char *, ...);
-    static void console(char *, ...);
+    static void console(bool port,char *, ...);
     static void setLoglevel(LogLevel);
     static LogLevel getLogLevel();
     static uint32_t getLastLogTime();
@@ -49,9 +49,7 @@ private:
     static uint32_t lastLogTime;
 
     static void log(LogLevel, char *format, va_list);
-    static void logMessage(char *format, va_list args);
+    static void logMessage(char *format, va_list args, bool port);
 };
 
 #endif /* LOGGER_H_ */
-
-

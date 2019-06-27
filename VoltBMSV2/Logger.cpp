@@ -86,10 +86,10 @@ void Logger::error(char *message, ...) {
    Output a comnsole message with a variable amount of parameters
    printf() style, see Logger::logMessage()
 */
-void Logger::console(char *message, ...) {
+void Logger::console(bool port, char *message, ...) {
   va_list args;
   va_start(args, message);
-  Logger::logMessage(message, args);
+  Logger::logMessage(message, args, port);
   va_end(args);
 }
 
@@ -167,7 +167,7 @@ void Logger::log(LogLevel level, char *format, va_list args) {
   }
   SERIALCONSOLE.print(": ");
 
-  logMessage(format, args);
+  //logMessage(format, args);
 }
 
 /*
@@ -188,80 +188,196 @@ void Logger::log(LogLevel level, char *format, va_list args) {
    %t - prints the next parameter as boolean ('T' or 'F')
    %T - prints the next parameter as boolean ('true' or 'false')
 */
-void Logger::logMessage(char *format, va_list args) {
+void Logger::logMessage(char *format, va_list args, bool port) {
   for (; *format != 0; ++format) {
     if (*format == '%') {
       ++format;
       if (*format == '\0')
         break;
       if (*format == '%') {
-        SERIALCONSOLE.print(*format);
+        if (port == 0)
+        {
+          SERIALCONSOLE.print(*format);
+        }
+        else
+        {
+          Serial2.print(*format);
+        }
         continue;
       }
       if (*format == 's') {
         register char *s = (char *) va_arg( args, int );
-        SERIALCONSOLE.print(s);
+        if (port == 0)
+        {
+          SERIALCONSOLE.print(s);
+        }
+        else
+        {
+          Serial2.print(s);
+        }
         continue;
       }
       if (*format == 'd' || *format == 'i') {
-        SERIALCONSOLE.print(va_arg( args, int ), DEC);
+        if (port == 0)
+        {
+          SERIALCONSOLE.print(va_arg( args, int ), DEC);
+        }
+        else
+        {
+          Serial2.print(va_arg( args, int ), DEC);
+        }
         continue;
       }
       if (*format == 'f') {
-        SERIALCONSOLE.print(va_arg( args, double ), 3);
+        if (port == 0)
+        {
+          SERIALCONSOLE.print(va_arg( args, double ), 3);
+        }
+        else
+        {
+          Serial2.print(va_arg( args, double ), 3);
+        }
         continue;
       }
       if (*format == 'z') {
-        SERIALCONSOLE.print(va_arg( args, double ), 0);
+        if (port == 0)
+        {
+          SERIALCONSOLE.print(va_arg( args, double ), 0);
+        }
+        else
+        {
+          Serial2.print(va_arg( args, double ), 0);
+        }
         continue;
       }
       if (*format == 'x') {
-        SERIALCONSOLE.print(va_arg( args, int ), HEX);
+        if (port == 0)
+        {
+          SERIALCONSOLE.print(va_arg( args, int ), HEX);
+        }
+        else
+        {
+          Serial2.print(va_arg( args, int ), HEX);
+        }
         continue;
       }
       if (*format == 'X') {
-        SERIALCONSOLE.print("0x");
-        SERIALCONSOLE.print(va_arg( args, int ), HEX);
+        if (port == 0)
+        {
+          SERIALCONSOLE.print("0x");
+          SERIALCONSOLE.print(va_arg( args, int ), HEX);
+        }
+        else
+        {
+          Serial2.print("0x");
+          Serial2.print(va_arg( args, int ), HEX);
+        }
         continue;
       }
       if (*format == 'b') {
-        SERIALCONSOLE.print(va_arg( args, int ), BIN);
+        if (port == 0)
+        {
+          SERIALCONSOLE.print(va_arg( args, int ), BIN);
+        }
+        else
+        {
+          Serial2.print(va_arg( args, int ), BIN);
+        }
         continue;
       }
       if (*format == 'B') {
-        SERIALCONSOLE.print("0b");
-        SERIALCONSOLE.print(va_arg( args, int ), BIN);
+        if (port == 0)
+        {
+          SERIALCONSOLE.print("0b");
+          SERIALCONSOLE.print(va_arg( args, int ), BIN);
+        }
+        else
+        {
+          Serial2.print("0b");
+          Serial2.print(va_arg( args, int ), BIN);
+        }
         continue;
       }
       if (*format == 'l') {
-        SERIALCONSOLE.print(va_arg( args, long ), DEC);
+        if (port == 0)
+        {
+          SERIALCONSOLE.print(va_arg( args, long ), DEC);
+        }
+        else
+        {
+          Serial2.print(va_arg( args, long ), DEC);
+        }
         continue;
       }
 
       if (*format == 'c') {
-        SERIALCONSOLE.print(va_arg( args, int ));
+        if (port == 0)
+        {
+          SERIALCONSOLE.print(va_arg( args, int ));
+        }
+        else
+        {
+          Serial2.print(va_arg( args, int ));
+        }
         continue;
       }
       if (*format == 't') {
-        if (va_arg( args, int ) == 1) {
-          SERIALCONSOLE.print("T");
-        } else {
-          SERIALCONSOLE.print("F");
+        if (port == 0)
+        {
+          if (va_arg( args, int ) == 1) {
+            SERIALCONSOLE.print("T");
+          } else {
+            SERIALCONSOLE.print("F");
+          }
+        }
+        else
+        {
+          if (va_arg( args, int ) == 1) {
+            Serial2.print("T");
+          }
+          else
+          {
+            Serial2.print("F");
+          }
         }
         continue;
       }
       if (*format == 'T') {
-        if (va_arg( args, int ) == 1) {
-          SERIALCONSOLE.print("TRUE");
-        } else {
-          SERIALCONSOLE.print("FALSE");
+        if (port == 0)
+        {
+          if (va_arg( args, int ) == 1) {
+            SERIALCONSOLE.print("TRUE");
+          } else {
+            SERIALCONSOLE.print("FALSE");
+          }
+        }
+        else
+        {
+          if (va_arg( args, int ) == 1) {
+            Serial2.print("TRUE");
+          } else {
+            Serial2.print("FALSE");
+          }
         }
         continue;
       }
 
     }
-    SERIALCONSOLE.print(*format);
+    if (port == 0)
+    {
+      SERIALCONSOLE.print(*format);
+    }
+    else
+    {
+      Serial2.print(*format);
+    }
   }
-  SERIALCONSOLE.println();
+  if (port == 0)
+  {
+    SERIALCONSOLE.println();
+  }
+  else
+  {
+    Serial2.println();
+  }
 }
-
