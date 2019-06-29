@@ -727,6 +727,7 @@ void loop()
     }
     else
     {
+      /*
       if (cellspresent != bms.seriescells() || cellspresent != (settings.Scells * settings.Pstrings)) //detect a fault in cells detected
       {
         SERIALCONSOLE.println("  ");
@@ -735,6 +736,7 @@ void loop()
         bmsstatus = Error;
         ErrorReason = 3;
       }
+      */
     }
     alarmupdate();
     if (CSVdebug != 1)
@@ -956,6 +958,7 @@ void printbmsstat()
 
       case (Error):
         SERIALCONSOLE.print(" Error ");
+        SERIALCONSOLE.print(ErrorReason);
         break;
     }
   }
