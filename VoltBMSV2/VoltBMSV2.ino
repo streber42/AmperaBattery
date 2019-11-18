@@ -38,7 +38,7 @@ EEPROMSettings settings;
 
 
 /////Version Identifier/////////
-int firmver = 190428;
+int firmver = 191118;
 
 //Curent filter//
 float filterFrequency = 5.0 ;
@@ -297,7 +297,7 @@ void setup()
 
   SERIALCONSOLE.begin(115200);
   SERIALCONSOLE.println("Starting up!");
-  SERIALCONSOLE.println("SimpBMS V2 Outlander");
+  SERIALCONSOLE.println("SimpBMS V2 Volt-Ampera");
 
   Serial2.begin(115200);
 
