@@ -421,6 +421,8 @@ void BMSModuleManager::setSensors(int sensor, float Ignore)
 float BMSModuleManager::getAvgTemperature()
 {
   float avg = 0.0f;
+  lowTemp = 999.0f;
+  highTemp = -999.0f;
   int y = 0; //counter for modules below -70 (no sensors connected)
   numFoundModules = 0;
   for (int x = 1; x <= MAX_MODULE_ADDR; x++)
@@ -431,13 +433,13 @@ float BMSModuleManager::getAvgTemperature()
       if (modules[x].getAvgTemp() > -70)
       {
         avg += modules[x].getAvgTemp();
-        if (modules[x].getAvgTemp() > highTemp)
+        if (modules[x].getHighTemp() > highTemp)
         {
-          highTemp = modules[x].getAvgTemp();
+          highTemp = modules[x].getHighTemp();
         }
-        if (modules[x].getAvgTemp() < lowTemp)
+        if (modules[x].getLowTemp() < lowTemp)
         {
-          lowTemp = modules[x].getAvgTemp();
+          lowTemp = modules[x].getLowTemp();
         }
       }
       else
@@ -480,12 +482,12 @@ void BMSModuleManager::printPackSummary()
   uint8_t COV;
   uint8_t CUV;
 
-  Logger::console(0,"");
-  Logger::console(0,"");
-  Logger::console(0,"");
-  Logger::console(0,"Modules: %i  Cells: %i  Voltage: %fV   Avg Cell Voltage: %fV     Avg Temp: %fC ", numFoundModules, seriescells(),
+  Logger::console(0, "");
+  Logger::console(0, "");
+  Logger::console(0, "");
+  Logger::console(0, "Modules: %i  Cells: %i  Voltage: %fV   Avg Cell Voltage: %fV     Avg Temp: %fC ", numFoundModules, seriescells(),
                   getPackVoltage(), getAvgCellVolt(), getAvgTemperature());
-  Logger::console(0,"");
+  Logger::console(0, "");
   for (int y = 1; y < MAX_MODULE_ADDR; y++)
   {
     if (modules[y].isExisting())
@@ -495,13 +497,13 @@ void BMSModuleManager::printPackSummary()
       COV = modules[y].getCOVCells();
       CUV = modules[y].getCUVCells();
 
-      Logger::console(0,"                               Module #%i", y);
+      Logger::console(0, "                               Module #%i", y);
 
-      Logger::console(0,"  Voltage: %fV   (%fV-%fV)     Temperatures: (%fC-%fC)", modules[y].getModuleVoltage(),
+      Logger::console(0, "  Voltage: %fV   (%fV-%fV)     Temperatures: (%fC-%fC)", modules[y].getModuleVoltage(),
                       modules[y].getLowCellV(), modules[y].getHighCellV(), modules[y].getLowTemp(), modules[y].getHighTemp());
       if (faults > 0)
       {
-        Logger::console(0,"  MODULE IS FAULTED:");
+        Logger::console(0, "  MODULE IS FAULTED:");
         if (faults & 1)
         {
           SERIALCONSOLE.print("    Overvoltage Cell Numbers (1-6): ");
@@ -530,55 +532,55 @@ void BMSModuleManager::printPackSummary()
         }
         if (faults & 4)
         {
-          Logger::console(0,"    CRC error in received packet");
+          Logger::console(0, "    CRC error in received packet");
         }
         if (faults & 8)
         {
-          Logger::console(0,"    Power on reset has occurred");
+          Logger::console(0, "    Power on reset has occurred");
         }
         if (faults & 0x10)
         {
-          Logger::console(0,"    Test fault active");
+          Logger::console(0, "    Test fault active");
         }
         if (faults & 0x20)
         {
-          Logger::console(0,"    Internal registers inconsistent");
+          Logger::console(0, "    Internal registers inconsistent");
         }
       }
       if (alerts > 0)
       {
-        Logger::console(0,"  MODULE HAS ALERTS:");
+        Logger::console(0, "  MODULE HAS ALERTS:");
         if (alerts & 1)
         {
-          Logger::console(0,"    Over temperature on TS1");
+          Logger::console(0, "    Over temperature on TS1");
         }
         if (alerts & 2)
         {
-          Logger::console(0,"    Over temperature on TS2");
+          Logger::console(0, "    Over temperature on TS2");
         }
         if (alerts & 4)
         {
-          Logger::console(0,"    Sleep mode active");
+          Logger::console(0, "    Sleep mode active");
         }
         if (alerts & 8)
         {
-          Logger::console(0,"    Thermal shutdown active");
+          Logger::console(0, "    Thermal shutdown active");
         }
         if (alerts & 0x10)
         {
-          Logger::console(0,"    Test Alert");
+          Logger::console(0, "    Test Alert");
         }
         if (alerts & 0x20)
         {
-          Logger::console(0,"    OTP EPROM Uncorrectable Error");
+          Logger::console(0, "    OTP EPROM Uncorrectable Error");
         }
         if (alerts & 0x40)
         {
-          Logger::console(0,"    GROUP3 Regs Invalid");
+          Logger::console(0, "    GROUP3 Regs Invalid");
         }
         if (alerts & 0x80)
         {
-          Logger::console(0,"    Address not registered");
+          Logger::console(0, "    Address not registered");
         }
       }
       if (faults > 0 || alerts > 0) SERIALCONSOLE.println();
@@ -595,12 +597,12 @@ void BMSModuleManager::printPackDetails(int digits, bool port)
   int cellNum = 0;
   if (port == 0)
   {
-    Logger::console(0,"");
-    Logger::console(0,"");
-    Logger::console(0,"");
-    Logger::console(0,"Modules: %i Cells: %i Strings: %i  Voltage: %fV   Avg Cell Voltage: %fV  Low Cell Voltage: %fV   High Cell Voltage: %fV Delta Voltage: %zmV   Avg Temp: %fC ", numFoundModules, seriescells(),
+    Logger::console(0, "");
+    Logger::console(0, "");
+    Logger::console(0, "");
+    Logger::console(0, "Modules: %i Cells: %i Strings: %i  Voltage: %fV   Avg Cell Voltage: %fV  Low Cell Voltage: %fV   High Cell Voltage: %fV Delta Voltage: %zmV   Avg Temp: %fC ", numFoundModules, seriescells(),
                     Pstring, getPackVoltage(), getAvgCellVolt(), LowCellVolt, HighCellVolt, (HighCellVolt - LowCellVolt) * 1000, getAvgTemperature());
-    Logger::console(0,"");
+    Logger::console(0, "");
     for (int y = 1; y < MAX_MODULE_ADDR; y++)
     {
       if (modules[y].isExisting())
@@ -686,12 +688,12 @@ void BMSModuleManager::printPackDetails(int digits, bool port)
   }
   else
   {
-    Logger::console(1,"");
-    Logger::console(1,"");
-    Logger::console(1,"");
-    Logger::console(1,"Modules: %i Cells: %i Strings: %i  Voltage: %fV   Avg Cell Voltage: %fV  Low Cell Voltage: %fV   High Cell Voltage: %fV Delta Voltage: %zmV   Avg Temp: %fC ", numFoundModules, seriescells(),
+    Logger::console(1, "");
+    Logger::console(1, "");
+    Logger::console(1, "");
+    Logger::console(1, "Modules: %i Cells: %i Strings: %i  Voltage: %fV   Avg Cell Voltage: %fV  Low Cell Voltage: %fV   High Cell Voltage: %fV Delta Voltage: %zmV   Avg Temp: %fC ", numFoundModules, seriescells(),
                     Pstring, getPackVoltage(), getAvgCellVolt(), LowCellVolt, HighCellVolt, (HighCellVolt - LowCellVolt) * 1000, getAvgTemperature());
-    Logger::console(1,"");
+    Logger::console(1, "");
     for (int y = 1; y < MAX_MODULE_ADDR; y++)
     {
       if (modules[y].isExisting())
