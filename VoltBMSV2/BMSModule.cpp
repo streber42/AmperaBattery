@@ -1,6 +1,6 @@
 #include "config.h"
 #include "BMSModule.h"
-#include "BMSUtil.h"
+//#include "BMSUtil.h"
 #include "Logger.h"
 
 
@@ -293,7 +293,30 @@ float BMSModule::getLowTemp()
 
 float BMSModule::getHighTemp()
 {
-  return (temperatures[0] < temperatures[1]) ? temperatures[1] : temperatures[0];
+  if (getAvgTemp() > 0.5)
+  {
+    if (temperatures[0] > 0.5)
+    {
+      if (temperatures[0] > temperatures[1] && temperatures[0] > temperatures[2])
+      {
+        return (temperatures[0]);
+      }
+    }
+    if (temperatures[1] > 0.5)
+    {
+      if (temperatures[1] > temperatures[0] && temperatures[1] > temperatures[2])
+      {
+        return (temperatures[1]);
+      }
+    }
+    if (temperatures[2] > 0.5)
+    {
+      if (temperatures[2] > temperatures[1] && temperatures[2] > temperatures[0])
+      {
+        return (temperatures[2]);
+      }
+    }
+  }
 }
 
 float BMSModule::getAvgTemp()
@@ -418,4 +441,3 @@ void BMSModule::setIgnoreCell(float Ignore)
   Serial.print(Ignore);
   Serial.println();
 }
-

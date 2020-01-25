@@ -29,16 +29,19 @@
 #include <FlexCAN.h> //https://github.com/collin80/FlexCAN_Library
 #include <SPI.h>
 #include <Filters.h>//https://github.com/JonHub/Filters
+#include "Serial_CAN_Module_TeensyS3.h" //https://github.com/tomdebree/Serial_CAN_Teensy
 
 #define CPU_REBOOT (_reboot_Teensyduino_());
 
+
+Serial_CAN can;
 BMSModuleManager bms;
 SerialConsole console;
 EEPROMSettings settings;
 
 
 /////Version Identifier/////////
-int firmver = 191203;
+int firmver = 250120;
 
 //Curent filter//
 float filterFrequency = 5.0 ;
@@ -158,6 +161,10 @@ float chargerend = 0; //V before Charge Voltage to turn off the finishing charge
 int chargertoggle = 0;
 int ncharger = 1; // number of chargers
 
+//serial canbus expansion
+unsigned long id = 0;
+unsigned char dta[8];
+
 //variables
 int outputstate = 0;
 int incomingByte = 0;
@@ -171,6 +178,7 @@ int debug = 1;
 int inputcheck = 0; //read digital inputs
 int outputcheck = 0; //check outputs
 int candebug = 0; //view can frames
+int CanDebugSerial = 0; //view can frames
 int gaugedebug = 0;
 int debugCur = 0;
 int CSVdebug = 0;
@@ -182,6 +190,7 @@ ADC *adc = new ADC(); // adc object
 void loadSettings()
 {
   Logger::console(0, "Resetting to factory defaults");
+  settings.version = EEPROM_VERSION;
   settings.checksum = 2;
   settings.canSpeed = 125000;
   settings.batteryID = 0x01; //in the future should be 0xFF to force it to ask for an address
@@ -234,6 +243,9 @@ void loadSettings()
   settings.CurDead = 5;// mV of dead band on current sensor
   settings.ChargerDirect = 1; //1 - charger is always connected to HV battery // 0 - Charger is behind the contactors
   settings.disp = 0; // 1 - display is used 0 - mirror serial data onto serial bus
+  settings.SerialCan = 1; // 1- serial can adapter used 0- Not used
+  settings.SerialCanSpeed = 500; //serial can adapter speed
+  settings.DCDCreq = 140; //requested DCDC voltage output in 0.1V
 }
 
 
@@ -300,6 +312,7 @@ void setup()
   SERIALCONSOLE.println("SimpBMS V2 Volt-Ampera");
 
   Serial2.begin(115200);
+  canSerial.begin(115200); //Expansion serial bus
 
   // Display reason the Teensy was last reset
   Serial.println();
@@ -335,13 +348,10 @@ void setup()
   /////////////////
 
 
-  SERIALBMS.begin(612500); //Tesla serial bus
-  //VE.begin(19200); //Victron VE direct bus
-#if defined (__arm__) && defined (__SAM3X8E__)
-  serialSpecialInit(USART0, 612500); //required for Due based boards as the stock core files don't support 612500 baud.
-#endif
 
-  SERIALCONSOLE.println("Started serial interface to BMS.");
+  //VE.begin(19200); //Victron VE direct bus
+
+  SERIALCONSOLE.println("Started serial interface");
 
 
   EEPROM.get(0, settings);
@@ -374,6 +384,10 @@ void loop()
   if (SERIALCONSOLE.available() > 0)
   {
     menu();
+  }
+  if (settings.SerialCan == 1)
+  {
+    SerialCanRecieve();
   }
 
   if (outputcheck != 1)
@@ -500,7 +514,7 @@ void loop()
           }
         }
 
-      
+
         if (SOCset == 1)
         {
           if (bms.getLowCellVolt() < settings.UnderVSetpoint || bms.getHighCellVolt() > settings.OverVSetpoint || bms.getHighTemperature() > settings.OverTSetpoint)
@@ -682,9 +696,12 @@ void loop()
       {
         if (bms.getLowCellVolt() < settings.UnderVSetpoint || bms.getHighCellVolt() < settings.UnderVSetpoint)
         {
-          SERIALCONSOLE.println("  ");
-          SERIALCONSOLE.print("   !!! Undervoltage Fault !!!");
-          SERIALCONSOLE.println("  ");
+          if (debug != 0)
+          {
+            SERIALCONSOLE.println("  ");
+            SERIALCONSOLE.print("   !!! Undervoltage Fault !!!");
+            SERIALCONSOLE.println("  ");
+          }
           bmsstatus = Error;
           ErrorReason = 1;
         }
@@ -731,7 +748,12 @@ void loop()
 
     updateSOC();
     currentlimit();
+
     VEcan();
+    if (settings.SerialCan == 1)
+    {
+      VECanSerial();
+    }
 
     sendcommand();
     if (cellspresent == 0 && SOCset == 1)
@@ -742,14 +764,14 @@ void loop()
     else
     {
       /*
-      if (cellspresent != bms.seriescells() || cellspresent != (settings.Scells * settings.Pstrings)) //detect a fault in cells detected
-      {
+        if (cellspresent != bms.seriescells() || cellspresent != (settings.Scells * settings.Pstrings)) //detect a fault in cells detected
+        {
         SERIALCONSOLE.println("  ");
         SERIALCONSOLE.print("   !!! Series Cells Fault !!!");
         SERIALCONSOLE.println("  ");
         bmsstatus = Error;
         ErrorReason = 3;
-      }
+        }
       */
     }
     alarmupdate();
@@ -793,12 +815,20 @@ void loop()
     if (settings.ESSmode == 1)
     {
       chargercomms();
+      if (settings.SerialCan == 1)
+      {
+        SerialCanCharger();
+      }
     }
     else
     {
       if (bmsstatus == Charge)
       {
         chargercomms();
+        if (settings.SerialCan == 1)
+        {
+          SerialCanCharger();
+        }
       }
     }
   }
@@ -1199,8 +1229,11 @@ void updateSOC()
 
       ampsecond = (SOC * settings.CAP * settings.Pstrings * 10) / 0.27777777777778 ;
       SOCset = 1;
-      SERIALCONSOLE.println("  ");
-      SERIALCONSOLE.println("//////////////////////////////////////// SOC SET ////////////////////////////////////////");
+      if (debug != 0)
+      {
+        SERIALCONSOLE.println("  ");
+        SERIALCONSOLE.println("//////////////////////////////////////// SOC SET ////////////////////////////////////////");
+      }
     }
   }
   if (settings.voltsoc == 1)
@@ -1342,8 +1375,11 @@ void contcon()
       {
         if (conttimer2 == 0)
         {
-          Serial.println();
-          Serial.println("pull in OUT6");
+          if (debug != 0)
+          {
+            Serial.println();
+            Serial.println("pull in OUT6");
+          }
           analogWrite(OUT6, 255);
           conttimer2 = millis() + pulltime ;
         }
@@ -1361,8 +1397,11 @@ void contcon()
       {
         if (conttimer3 == 0)
         {
-          Serial.println();
-          Serial.println("pull in OUT7");
+          if (debug != 0)
+          {
+            Serial.println();
+            Serial.println("pull in OUT7");
+          }
           analogWrite(OUT7, 255);
           conttimer3 = millis() + pulltime ;
         }
@@ -1705,6 +1744,12 @@ void menu()
         incomingByte = 'd';
         break;
 
+      case 'a':
+        menuload = 1;
+        CanDebugSerial = !CanDebugSerial;
+        incomingByte = 'd';
+        break;
+
       case 113: //q for quite menu
 
         menuload = 0;
@@ -1814,6 +1859,46 @@ void menu()
       default:
         // if nothing else matches, do the default
         // default is optional
+        break;
+    }
+  }
+
+  if (menuload == 9)
+  {
+    switch (incomingByte)
+    {
+      case '1':
+        menuload = 1;
+        settings.SerialCan = !settings.SerialCan;
+        if (settings.SerialCan > 1)
+        {
+          settings.SerialCan = 0;
+        }
+        incomingByte = 'x';
+        break;
+
+
+      case '2':
+        menuload = 1;
+        if (Serial.available() > 0)
+        {
+          SetSerialCan(Serial.parseInt());
+        }
+        incomingByte = 'x';
+        break;
+
+      case '3':
+        if (Serial.available() > 0)
+        {
+          settings.DCDCreq = Serial.parseInt();
+          menuload = 1;
+          incomingByte = 'x';
+        }
+        break;
+
+      case 113: //q to go back to main menu
+        menuload = 0;
+        incomingByte = 115;
         break;
     }
   }
@@ -2259,6 +2344,37 @@ void menu()
         CPU_REBOOT ;
         break;
 
+      case 'x': //Expansion Settings
+        while (Serial.available()) {
+          Serial.read();
+        }
+        SERIALCONSOLE.println();
+        SERIALCONSOLE.println();
+        SERIALCONSOLE.println();
+        SERIALCONSOLE.println();
+        SERIALCONSOLE.println();
+        SERIALCONSOLE.println("Expansion Settings");
+        SERIALCONSOLE.println();
+        SERIALCONSOLE.println();
+        SERIALCONSOLE.print("1 - Serial Port Function:");
+        if (settings.SerialCan == 0)
+        {
+          SERIALCONSOLE.println("None");
+        }
+        else
+        {
+          SERIALCONSOLE.println("Can Bus Expansion");
+          SERIALCONSOLE.print("2 - Serial Can Speed:");
+          SERIALCONSOLE.print(settings.SerialCanSpeed);
+          SERIALCONSOLE.println(" kbps");
+          SERIALCONSOLE.print("3 - Volt DCDC request:");
+          SERIALCONSOLE.print(settings.DCDCreq * 0.1, 1);
+          SERIALCONSOLE.println(" V");
+        }
+        SERIALCONSOLE.println("q - Go back to menu");
+        menuload = 9;
+        break;
+
       case 'i': //Ignore Value Settings
         while (Serial.available()) {
           Serial.read();
@@ -2446,6 +2562,8 @@ void menu()
         {
           SERIALCONSOLE.println(" Serial Mirror");
         }
+        SERIALCONSOLE.print("a - Can Debug Serial:");
+        SERIALCONSOLE.println(CanDebugSerial);
         SERIALCONSOLE.println("q - Go back to menu");
         menuload = 4;
         break;
@@ -2612,6 +2730,7 @@ void menu()
     SERIALCONSOLE.println("c - Current Sensor Calibration");
     SERIALCONSOLE.println("k - Contactor and Gauge Settings");
     SERIALCONSOLE.println("i - Ignore Value Settings");
+    SERIALCONSOLE.println("x - Expansion Settings");
     SERIALCONSOLE.println("d - Debug Settings");
     SERIALCONSOLE.println("R - Restart BMS");
     SERIALCONSOLE.println("q - exit menu");
@@ -2760,7 +2879,7 @@ void currentlimit()
       {
         if (bms.getLowCellVolt() < (settings.DischVsetpoint + settings.DisTaper))
         {
-          discurrent = discurrent - map(bms.getLowCellVolt(), settings.DischVsetpoint, (settings.DischVsetpoint + settings.DisTaper), settings.chargecurrentmax, 0);
+          discurrent = discurrent - map(bms.getLowCellVolt(), settings.DischVsetpoint, (settings.DischVsetpoint + settings.DisTaper), settings.discurrentmax, 0);
         }
       }
 
@@ -3275,5 +3394,263 @@ void chargercomms()
       msg.buf[3] = lowByte( 400);
     }
     Can0.write(msg);
+  }
+}
+
+void SerialCanCharger()
+{
+  if (settings.chargertype == Elcon)
+  {
+    dta[0] = highByte(uint16_t(settings.ChargeVsetpoint * settings.Scells * 10));
+    dta[1] = lowByte(uint16_t(settings.ChargeVsetpoint * settings.Scells * 10));
+    dta[2] = highByte(chargecurrent / ncharger);
+    dta[3] = lowByte(chargecurrent / ncharger);
+    dta[4] = 0x00;
+    dta[5] = 0x00;
+    dta[6] = 0x00;
+    dta[7] = 0x00;
+
+    can.send(0x1806E5F4, 1, 0, 8, dta);
+  }
+
+  if (settings.chargertype == Eltek)
+  {
+    dta[0] = 0x01;
+    dta[1] = lowByte(1000);
+    dta[2] = highByte(1000);
+    dta[3] = lowByte(uint16_t(settings.ChargeVsetpoint * settings.Scells * 10));
+    dta[4] = highByte(uint16_t(settings.ChargeVsetpoint * settings.Scells * 10));
+    dta[5] = lowByte(chargecurrent / ncharger);
+    dta[6] = highByte(chargecurrent / ncharger);
+
+    can.send(0x2FF, 0, 0, 7, dta);
+  }
+  if (settings.chargertype == BrusaNLG5)
+  {
+    dta[0] = 0x80;
+    /*
+      if (chargertoggle == 0)
+      {
+      dta[0] = 0x80;
+      chargertoggle++;
+      }
+      else
+      {
+      dta[0] = 0xC0;
+      chargertoggle = 0;
+      }
+    */
+    if (digitalRead(IN2) == LOW)//Gen OFF
+    {
+      dta[1] = highByte(maxac1 * 10);
+      dta[2] = lowByte(maxac1 * 10);
+    }
+    else
+    {
+      dta[1] = highByte(maxac2 * 10);
+      dta[2] = lowByte(maxac2 * 10);
+    }
+    dta[5] = highByte(chargecurrent / ncharger);
+    dta[6] = lowByte(chargecurrent / ncharger);
+    dta[3] = highByte(uint16_t(((settings.ChargeVsetpoint * settings.Scells ) - chargerendbulk) * 10));
+    dta[4] = lowByte(uint16_t(((settings.ChargeVsetpoint * settings.Scells ) - chargerendbulk)  * 10));
+    can.send(chargerid1, 0, 0, 7, dta);
+
+    delay(4);
+
+    dta[0] = 0x80;
+    if (digitalRead(IN2) == LOW)//Gen OFF
+    {
+      dta[1] = highByte(maxac1 * 10);
+      dta[2] = lowByte(maxac1 * 10);
+    }
+    else
+    {
+      dta[1] = highByte(maxac2 * 10);
+      dta[2] = lowByte(maxac2 * 10);
+    }
+    dta[3] = highByte(uint16_t(((settings.ChargeVsetpoint * settings.Scells ) - chargerend) * 10));
+    dta[4] = lowByte(uint16_t(((settings.ChargeVsetpoint * settings.Scells ) - chargerend) * 10));
+    dta[5] = highByte(chargecurrent / ncharger);
+    dta[6] = lowByte(chargecurrent / ncharger);
+    can.send(chargerid2, 0, 0, 7, dta);
+  }
+
+  if (settings.chargertype == ChevyVolt)
+  {
+
+    dta[0] = 0x02; //only HV charging , 0x03 hv and 12V charging
+    dta[1] = 0x00;
+    dta[2] = 0x00;
+    dta[3] = 0x00;
+    can.send(0x30E, 0, 0, 4, dta);
+
+    delay(4);
+    dta[0] = 0x40; //fixed
+    if ((chargecurrent * 2) > 255)
+    {
+      dta[1] = 255;
+    }
+    else
+    {
+      dta[1] = (chargecurrent * 2);
+    }
+    if ((settings.ChargeVsetpoint * settings.Scells ) > 200)
+    {
+      dta[2] = highByte(uint16_t((settings.ChargeVsetpoint * settings.Scells ) * 2));
+      dta[3] = lowByte(uint16_t((settings.ChargeVsetpoint * settings.Scells ) * 2));
+    }
+    else
+    {
+      dta[2] = highByte( 400);
+      dta[3] = lowByte( 400);
+    }
+    can.send(0x304, 0, 0, 4, dta);
+  }
+
+
+}
+
+void SerialCanRecieve()
+{
+  if (can.recv(&id, dta))
+  {
+    if (CanDebugSerial == 1)
+    {
+      Serial.print("GET DATA FROM ID: ");
+      Serial.println(id, HEX);
+      for (int i = 0; i < 8; i++)
+      {
+        //Serial.print("0x");
+        Serial.print(dta[i]);
+        Serial.print('\t');
+      }
+      Serial.println();
+    }
+  }
+}
+
+void SetSerialCan(int Speed)
+{
+  switch (Speed)
+  {
+    case 500:
+      if (can.canRate(CAN_RATE_500))
+      {
+        Serial.println("set can rate ok");
+        settings.SerialCanSpeed = 500;
+      }
+      else
+      {
+        Serial.println("set can rate fail");
+      }
+      break;
+
+    case 250:
+      if (can.canRate(CAN_RATE_250))
+      {
+        Serial.println("set can rate ok");
+        settings.SerialCanSpeed = 250;
+      }
+      else
+      {
+        Serial.println("set can rate fail");
+      }
+      break;
+
+    default:
+      Serial.println("Wrong CAN Speed");
+      // if nothing else matches, do the default
+      // default is optional
+      break;
+  }
+}
+
+
+void VECanSerial() //communication with Victron system over CAN
+{
+  int dela = 4;
+
+  if (storagemode == 0)
+  {
+    dta[0] = lowByte(uint16_t((settings.ChargeVsetpoint * settings.Scells ) * 10));
+    dta[1] = highByte(uint16_t((settings.ChargeVsetpoint * settings.Scells ) * 10));
+  }
+  else
+  {
+    dta[0] = lowByte(uint16_t((settings.StoreVsetpoint * settings.Scells ) * 10));
+    dta[1] = highByte(uint16_t((settings.StoreVsetpoint * settings.Scells ) * 10));
+  }
+  dta[2] = lowByte(chargecurrent);
+  dta[3] = highByte(chargecurrent);
+  dta[4] = lowByte(discurrent );
+  dta[5] = highByte(discurrent);
+  dta[6] = lowByte(uint16_t((settings.DischVsetpoint * settings.Scells) * 10));
+  dta[7] = highByte(uint16_t((settings.DischVsetpoint * settings.Scells) * 10));
+  can.send(0x351, 0, 0, 8, dta);
+
+  delay(dela);
+  dta[0] = lowByte(SOC);
+  dta[1] = highByte(SOC);
+  dta[2] = lowByte(SOH);
+  dta[3] = highByte(SOH);
+  dta[4] = lowByte(SOC * 10);
+  dta[5] = highByte(SOC * 10);
+  dta[6] = 0;
+  dta[7] = 0;
+  can.send(0x355, 0, 0, 8, dta);
+
+  delay(dela);
+  dta[0] = lowByte(uint16_t(bms.getPackVoltage() * 100));
+  dta[1] = highByte(uint16_t(bms.getPackVoltage() * 100));
+  dta[2] = lowByte(long(currentact / 100));
+  dta[3] = highByte(long(currentact / 100));
+  dta[4] = lowByte(int16_t(bms.getAvgTemperature() * 10));
+  dta[5] = highByte(int16_t(bms.getAvgTemperature() * 10));
+  dta[6] = 0;
+  dta[7] = 0;
+  can.send(0x356, 0, 0, 8, dta);
+
+  delay(dela);
+  dta[0] = alarm[0];//High temp  Low Voltage | High Voltage
+  dta[1] = alarm[1]; // High Discharge Current | Low Temperature
+  dta[2] = alarm[2]; //Internal Failure | High Charge current
+  dta[3] = alarm[3];// Cell Imbalance
+  dta[4] = warning[0];//High temp  Low Voltage | High Voltage
+  dta[5] = warning[1];// High Discharge Current | Low Temperature
+  dta[6] = warning[2];//Internal Failure | High Charge current
+  dta[7] = warning[3];// Cell Imbalance
+  can.send(0x35A, 0, 0, 8, dta);
+
+  delay(dela);
+  dta[0] = bmsname[0];
+  dta[1] = bmsname[1];
+  dta[2] = bmsname[2];
+  dta[3] = bmsname[3];
+  dta[4] = bmsname[4];
+  dta[5] = bmsname[5];
+  dta[6] = bmsname[6];
+  dta[7] = bmsname[7];
+  can.send(0x35E, 0, 0, 8, dta);
+
+  delay(dela);
+  dta[0] = bmsmanu[0];
+  dta[1] = bmsmanu[1];
+  dta[2] = bmsmanu[2];
+  dta[3] = bmsmanu[3];
+  dta[4] = bmsmanu[4];
+  dta[5] = bmsmanu[5];
+  dta[6] = bmsmanu[6];
+  dta[7] = bmsmanu[7];
+  can.send(0x370, 0, 0, 8, dta);
+
+
+  if (settings.DCDCreq > 0)
+  {
+    delay(dela);
+    dta[0] = 0xA0;
+    dta[1] = settings.DCDCreq * 1.27;
+
+    can.send(0x1D4, 0, 0, 2, dta);
   }
 }

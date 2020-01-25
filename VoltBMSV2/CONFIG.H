@@ -8,7 +8,7 @@
 //Define this to be the serial port the Tesla BMS modules are connected to.
 //On the Due you need to use a USART port (Serial1, Serial2, Serial3) and update the call to serialSpecialInit if not Serial1
 //Serial3 for teensy
-#define SERIALBMS  Serial3
+#define canSerial  Serial3
 
 // victron serial VE direct bus config
 #define VE Serial2
@@ -36,7 +36,7 @@
 
 #define MAX_MODULE_ADDR     0x10
 
-#define EEPROM_VERSION      0x10    //update any time EEPROM struct below is changed.
+#define EEPROM_VERSION      0x12    //update any time EEPROM struct below is changed.
 #define EEPROM_PAGE         0
 
 typedef struct {
@@ -90,4 +90,7 @@ typedef struct {
   float DisTaper;
   bool ChargerDirect;
   bool disp;
+  uint8_t SerialCan;
+  uint16_t SerialCanSpeed;
+  uint8_t DCDCreq;
 } EEPROMSettings;
