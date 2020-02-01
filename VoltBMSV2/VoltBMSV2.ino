@@ -41,7 +41,7 @@ EEPROMSettings settings;
 
 
 /////Version Identifier/////////
-int firmver = 250120;
+int firmver = 200201;
 
 //Curent filter//
 float filterFrequency = 5.0 ;
@@ -669,7 +669,7 @@ void loop()
           {
             //if (cellspresent == bms.seriescells()) //detect a fault in cells detected
             //{
-            if (bms.getLowCellVolt() >= settings.UnderVSetpoint && bms.getHighCellVolt() >= settings.OverVSetpoint)
+            if (bms.getLowCellVolt() >= settings.UnderVSetpoint && bms.getHighCellVolt() <= settings.OverVSetpoint)
             {
               bmsstatus = Ready;
             }
@@ -763,7 +763,6 @@ void loop()
     }
     else
     {
-      /*
         if (cellspresent != bms.seriescells() || cellspresent != (settings.Scells * settings.Pstrings)) //detect a fault in cells detected
         {
         SERIALCONSOLE.println("  ");
@@ -772,7 +771,6 @@ void loop()
         bmsstatus = Error;
         ErrorReason = 3;
         }
-      */
     }
     alarmupdate();
     if (CSVdebug != 1)
@@ -784,7 +782,6 @@ void loop()
   }
   if (millis() - cleartime > 5000)
   {
-    /*
       //bms.clearmodules(); // Not functional
       if (bms.checkcomms())
       {
@@ -806,7 +803,6 @@ void loop()
       bmsstatus = Error;
       ErrorReason = 4;
       }
-    */
     cleartime = millis();
   }
   if (millis() - looptime1 > settings.chargerspd)
