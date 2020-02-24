@@ -41,7 +41,7 @@ EEPROMSettings settings;
 
 
 /////Version Identifier/////////
-int firmver = 200201;
+int firmver = 240220;
 
 //Curent filter//
 float filterFrequency = 5.0 ;
@@ -242,7 +242,7 @@ void loadSettings()
   settings.UnderDur = 5000; //ms of allowed undervoltage before throwing open stopping discharge.
   settings.CurDead = 5;// mV of dead band on current sensor
   settings.ChargerDirect = 1; //1 - charger is always connected to HV battery // 0 - Charger is behind the contactors
-  settings.disp = 0; // 1 - display is used 0 - mirror serial data onto serial bus
+  settings.disp = 1; // 1 - display is used 0 - mirror serial data onto serial bus
   settings.SerialCan = 1; // 1- serial can adapter used 0- Not used
   settings.SerialCanSpeed = 500; //serial can adapter speed
   settings.DCDCreq = 140; //requested DCDC voltage output in 0.1V
@@ -763,14 +763,14 @@ void loop()
     }
     else
     {
-        if (cellspresent != bms.seriescells() || cellspresent != (settings.Scells * settings.Pstrings)) //detect a fault in cells detected
-        {
+      if (cellspresent != bms.seriescells() || cellspresent != (settings.Scells * settings.Pstrings)) //detect a fault in cells detected
+      {
         SERIALCONSOLE.println("  ");
         SERIALCONSOLE.print("   !!! Series Cells Fault !!!");
         SERIALCONSOLE.println("  ");
         bmsstatus = Error;
         ErrorReason = 3;
-        }
+      }
     }
     alarmupdate();
     if (CSVdebug != 1)
@@ -782,27 +782,27 @@ void loop()
   }
   if (millis() - cleartime > 5000)
   {
-      //bms.clearmodules(); // Not functional
-      if (bms.checkcomms())
-      {
+    //bms.clearmodules(); // Not functional
+    if (bms.checkcomms())
+    {
       //no missing modules
-        SERIALCONSOLE.println("  ");
-        SERIALCONSOLE.print(" ALL OK NO MODULE MISSING :) ");
-        SERIALCONSOLE.println("  ");
+      SERIALCONSOLE.println("  ");
+      SERIALCONSOLE.print(" ALL OK NO MODULE MISSING :) ");
+      SERIALCONSOLE.println("  ");
       if (  bmsstatus == Error)
       {
         bmsstatus = Boot;
       }
-      }
-      else
-      {
+    }
+    else
+    {
       //missing module
       SERIALCONSOLE.println("  ");
       SERIALCONSOLE.print("   !!! MODULE MISSING !!!");
       SERIALCONSOLE.println("  ");
       bmsstatus = Error;
       ErrorReason = 4;
-      }
+    }
     cleartime = millis();
   }
   if (millis() - looptime1 > settings.chargerspd)
@@ -3086,11 +3086,38 @@ void dashupdate()
     Serial2.write(0xff);  // We always have to send this three lines after each command sent to the nextion display.
     Serial2.write(0xff);
     Serial2.write(0xff);
+    Serial2.write("t7.txt=");
+    Serial2.write(0x22);
+    if (currentact > 0)
+    {
+      Serial2.print("+");
+    }
+    else
+    {
+      Serial2.print("-");
+    }
+    Serial2.write(0x22);
+    Serial2.write(0xff);  // We always have to send this three lines after each command sent to the nextion display.
+    Serial2.write(0xff);
+    Serial2.write(0xff);
+
     Serial2.print("temp.val=");
     Serial2.print(bms.getAvgTemperature(), 0);
     Serial2.write(0xff);  // We always have to send this three lines after each command sent to the nextion display.
     Serial2.write(0xff);
     Serial2.write(0xff);
+
+    Serial2.write("t0.txt=");
+    Serial2.write(0x22);
+    if (bms.getAvgTemperature() > 0)
+    {
+      Serial2.print("+");
+    }
+    else
+    {
+      Serial2.print("-");
+    }
+
     Serial2.print("templow.val=");
     Serial2.print(bms.getLowTemperature(), 0);
     Serial2.write(0xff);  // We always have to send this three lines after each command sent to the nextion display.
