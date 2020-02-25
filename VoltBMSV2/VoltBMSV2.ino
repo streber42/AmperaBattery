@@ -41,7 +41,7 @@ EEPROMSettings settings;
 
 
 /////Version Identifier/////////
-int firmver = 240220;
+int firmver = 250220;
 
 //Curent filter//
 float filterFrequency = 5.0 ;
@@ -685,7 +685,7 @@ void loop()
     }
   }
 
-  if (millis() - looptime > 500)
+  if (millis() - looptime > 1000)
   {
     looptime = millis();
     bms.getAllVoltTemp();
@@ -780,6 +780,7 @@ void loop()
 
     resetwdog();
   }
+  
   if (millis() - cleartime > 5000)
   {
     //bms.clearmodules(); // Not functional

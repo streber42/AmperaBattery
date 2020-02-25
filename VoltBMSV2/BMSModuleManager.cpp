@@ -267,10 +267,6 @@ void BMSModuleManager::decodecan(CAN_message_t &msg)
     Serial.print(Id);
     Serial.println();
   */
-  if (modules[CMU].getAddress() != CMU)
-  {
-    modules[CMU].setAddress(CMU);
-  }
   modules[CMU].setExists(true);
   modules[CMU].setReset(true);
   modules[CMU].decodecan(Id, msg);
