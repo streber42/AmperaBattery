@@ -41,7 +41,7 @@ EEPROMSettings settings;
 
 
 /////Version Identifier/////////
-int firmver = 250220;
+int firmver = 020320;
 
 //Curent filter//
 float filterFrequency = 5.0 ;
@@ -801,7 +801,7 @@ void loop()
       SERIALCONSOLE.println("  ");
       SERIALCONSOLE.print("   !!! MODULE MISSING !!!");
       SERIALCONSOLE.println("  ");
-      bmsstatus = Error;
+      //bmsstatus = Error;
       ErrorReason = 4;
     }
     cleartime = millis();
