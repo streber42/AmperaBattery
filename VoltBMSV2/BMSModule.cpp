@@ -14,10 +14,6 @@ BMSModule::BMSModule()
   }
   moduleVolt = 0.0f;
   temperatures[0] = 0.0f;
-  temperatures[1] = 0.0f;
-  temperatures[2] = 0.0f;
-  temperatures[3] = 0.0f;
-  temperatures[4] = 0.0f;
 
   lowestTemperature = 200.0f;
   highestTemperature = -100.0f;
