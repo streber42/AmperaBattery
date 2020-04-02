@@ -31,8 +31,10 @@
 #include <Filters.h>//https://github.com/JonHub/Filters
 #include "Serial_CAN_Module_TeensyS3.h" //https://github.com/tomdebree/Serial_CAN_Teensy
 
-#define CPU_REBOOT (_reboot_Teensyduino_());
-
+#define RESTART_ADDR       0xE000ED0C
+#define READ_RESTART()     (*(volatile uint32_t *)RESTART_ADDR)
+#define WRITE_RESTART(val) ((*(volatile uint32_t *)RESTART_ADDR) = (val))
+#define CPU_REBOOT WRITE_RESTART(0x5FA0004)
 
 Serial_CAN can;
 BMSModuleManager bms;
@@ -41,7 +43,7 @@ EEPROMSettings settings;
 
 
 /////Version Identifier/////////
-int firmver = 310320;
+int firmver = 020420;
 
 //Curent filter//
 float filterFrequency = 5.0 ;
