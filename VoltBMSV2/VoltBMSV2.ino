@@ -43,7 +43,7 @@ EEPROMSettings settings;
 
 
 /////Version Identifier/////////
-int firmver = 020420;
+int firmver = 200420;
 
 //Curent filter//
 float filterFrequency = 5.0 ;
@@ -166,6 +166,7 @@ int ncharger = 1; // number of chargers
 //serial canbus expansion
 unsigned long id = 0;
 unsigned char dta[8];
+int mescycl = 0;
 
 //variables
 int outputstate = 0;
@@ -248,6 +249,7 @@ void loadSettings()
   settings.SerialCan = 1; // 1- serial can adapter used 0- Not used
   settings.SerialCanSpeed = 500; //serial can adapter speed
   settings.DCDCreq = 140; //requested DCDC voltage output in 0.1V
+  settings.SerialCanBaud = 19200;
 }
 
 
@@ -314,7 +316,7 @@ void setup()
   SERIALCONSOLE.println("SimpBMS V2 Volt-Ampera");
 
   Serial2.begin(115200);
-  canSerial.begin(115200); //Expansion serial bus
+
 
   // Display reason the Teensy was last reset
   Serial.println();
@@ -361,7 +363,7 @@ void setup()
   {
     loadSettings();
   }
-
+  canSerial.begin(settings.SerialCanBaud); //Expansion serial bus
   Logger::setLoglevel(Logger::Off); //Debug = 0, Info = 1, Warn = 2, Error = 3, Off = 4
 
   lastUpdate = 0;
@@ -752,10 +754,6 @@ void loop()
     currentlimit();
 
     VEcan();
-    if (settings.SerialCan == 1)
-    {
-      VECanSerial();
-    }
 
     sendcommand();
     if (cellspresent == 0 && SOCset == 1)
@@ -785,9 +783,10 @@ void loop()
 
   if (millis() - cleartime > 5000)
   {
-    //bms.clearmodules(); // Not functional
-    if (bms.checkcomms())
-    {
+    /*
+      //bms.clearmodules(); // Not functional
+      if (bms.checkcomms())
+      {
       //no missing modules
       SERIALCONSOLE.println("  ");
       SERIALCONSOLE.print(" ALL OK NO MODULE MISSING :) ");
@@ -796,16 +795,17 @@ void loop()
       {
         bmsstatus = Boot;
       }
-    }
-    else
-    {
+      }
+      else
+      {
       //missing module
       SERIALCONSOLE.println("  ");
       SERIALCONSOLE.print("   !!! MODULE MISSING !!!");
       SERIALCONSOLE.println("  ");
       //bmsstatus = Error;
       ErrorReason = 4;
-    }
+      }
+    */
     cleartime = millis();
   }
   if (millis() - looptime1 > settings.chargerspd)
@@ -821,16 +821,12 @@ void loop()
     }
     else
     {
-      if (bmsstatus == Charge)
-      {
-        chargercomms();
-        if (settings.SerialCan == 1)
-        {
-          SerialCanCharger();
-        }
-      }
+
+      CanSerial();
     }
+
   }
+
 }
 
 void alarmupdate()
@@ -1895,6 +1891,15 @@ void menu()
         }
         break;
 
+      case '4':
+        menuload = 1;
+        if (Serial.available() > 0)
+        {
+          SetSerialBaud(Serial.parseInt() * 100);
+        }
+        incomingByte = 'x';
+        break;
+
       case 113: //q to go back to main menu
         menuload = 0;
         incomingByte = 115;
@@ -2369,6 +2374,9 @@ void menu()
           SERIALCONSOLE.print("3 - Volt DCDC request:");
           SERIALCONSOLE.print(settings.DCDCreq * 0.1, 1);
           SERIALCONSOLE.println(" V");
+          SERIALCONSOLE.print("4 - Serial Baud Rate ");
+          SERIALCONSOLE.print(settings.SerialCanBaud);
+          SERIALCONSOLE.println(" kbps");
         }
         SERIALCONSOLE.println("q - Go back to menu");
         menuload = 9;
@@ -3261,115 +3269,6 @@ void chargercomms()
 
 void SerialCanCharger()
 {
-  if (settings.chargertype == Elcon)
-  {
-    dta[0] = highByte(uint16_t(settings.ChargeVsetpoint * settings.Scells * 10));
-    dta[1] = lowByte(uint16_t(settings.ChargeVsetpoint * settings.Scells * 10));
-    dta[2] = highByte(chargecurrent / ncharger);
-    dta[3] = lowByte(chargecurrent / ncharger);
-    dta[4] = 0x00;
-    dta[5] = 0x00;
-    dta[6] = 0x00;
-    dta[7] = 0x00;
-
-    can.send(0x1806E5F4, 1, 0, 8, dta);
-  }
-
-  if (settings.chargertype == Eltek)
-  {
-    dta[0] = 0x01;
-    dta[1] = lowByte(1000);
-    dta[2] = highByte(1000);
-    dta[3] = lowByte(uint16_t(settings.ChargeVsetpoint * settings.Scells * 10));
-    dta[4] = highByte(uint16_t(settings.ChargeVsetpoint * settings.Scells * 10));
-    dta[5] = lowByte(chargecurrent / ncharger);
-    dta[6] = highByte(chargecurrent / ncharger);
-
-    can.send(0x2FF, 0, 0, 7, dta);
-  }
-  if (settings.chargertype == BrusaNLG5)
-  {
-    dta[0] = 0x80;
-    /*
-      if (chargertoggle == 0)
-      {
-      dta[0] = 0x80;
-      chargertoggle++;
-      }
-      else
-      {
-      dta[0] = 0xC0;
-      chargertoggle = 0;
-      }
-    */
-    if (digitalRead(IN2) == LOW)//Gen OFF
-    {
-      dta[1] = highByte(maxac1 * 10);
-      dta[2] = lowByte(maxac1 * 10);
-    }
-    else
-    {
-      dta[1] = highByte(maxac2 * 10);
-      dta[2] = lowByte(maxac2 * 10);
-    }
-    dta[5] = highByte(chargecurrent / ncharger);
-    dta[6] = lowByte(chargecurrent / ncharger);
-    dta[3] = highByte(uint16_t(((settings.ChargeVsetpoint * settings.Scells ) - chargerendbulk) * 10));
-    dta[4] = lowByte(uint16_t(((settings.ChargeVsetpoint * settings.Scells ) - chargerendbulk)  * 10));
-    can.send(chargerid1, 0, 0, 7, dta);
-
-    delay(4);
-
-    dta[0] = 0x80;
-    if (digitalRead(IN2) == LOW)//Gen OFF
-    {
-      dta[1] = highByte(maxac1 * 10);
-      dta[2] = lowByte(maxac1 * 10);
-    }
-    else
-    {
-      dta[1] = highByte(maxac2 * 10);
-      dta[2] = lowByte(maxac2 * 10);
-    }
-    dta[3] = highByte(uint16_t(((settings.ChargeVsetpoint * settings.Scells ) - chargerend) * 10));
-    dta[4] = lowByte(uint16_t(((settings.ChargeVsetpoint * settings.Scells ) - chargerend) * 10));
-    dta[5] = highByte(chargecurrent / ncharger);
-    dta[6] = lowByte(chargecurrent / ncharger);
-    can.send(chargerid2, 0, 0, 7, dta);
-  }
-
-  if (settings.chargertype == ChevyVolt)
-  {
-
-    dta[0] = 0x02; //only HV charging , 0x03 hv and 12V charging
-    dta[1] = 0x00;
-    dta[2] = 0x00;
-    dta[3] = 0x00;
-    can.send(0x30E, 0, 0, 4, dta);
-
-    delay(4);
-    dta[0] = 0x40; //fixed
-    if ((chargecurrent * 2) > 255)
-    {
-      dta[1] = 255;
-    }
-    else
-    {
-      dta[1] = (chargecurrent * 2);
-    }
-    if ((settings.ChargeVsetpoint * settings.Scells ) > 200)
-    {
-      dta[2] = highByte(uint16_t((settings.ChargeVsetpoint * settings.Scells ) * 2));
-      dta[3] = lowByte(uint16_t((settings.ChargeVsetpoint * settings.Scells ) * 2));
-    }
-    else
-    {
-      dta[2] = highByte( 400);
-      dta[3] = lowByte( 400);
-    }
-    can.send(0x304, 0, 0, 4, dta);
-  }
-
 
 }
 
@@ -3428,91 +3327,187 @@ void SetSerialCan(int Speed)
   }
 }
 
+/*
+  value          0     1     2     3     4
+  baud rate(b/s)  9600  19200 38400 57600 115200
+*/
 
-void VECanSerial() //communication with Victron system over CAN
+void SetSerialBaud(uint32_t Speed)
 {
-  int dela = 4;
-
-  if (storagemode == 0)
+  Serial.println(Speed);
+  switch (Speed)
   {
-    dta[0] = lowByte(uint16_t((settings.ChargeVsetpoint * settings.Scells ) * 10));
-    dta[1] = highByte(uint16_t((settings.ChargeVsetpoint * settings.Scells ) * 10));
+    case 9600:
+      can.baudRate(0);
+      settings.SerialCanBaud = 9600;
+      canSerial.flush();
+      canSerial.begin(9600);
+      can.exitSettingMode();
+      break;
+
+    case 19200:
+      can.baudRate(1);
+      settings.SerialCanBaud = 19200;
+      canSerial.flush();
+      canSerial.begin(19200);
+      can.exitSettingMode();
+      break;
+
+    case 38400:
+      can.baudRate(2);
+      settings.SerialCanBaud = 38400;
+      canSerial.flush();
+      canSerial.begin(38400);
+      can.exitSettingMode();
+      break;
+
+    default:
+      Serial.println("Wrong Baud Rate");
+      // if nothing else matches, do the default
+      // default is optional
+      break;
   }
-  else
+}
+
+void CanSerial() //communication with Victron system over CAN
+{
+  if (bmsstatus == Charge)
   {
-    dta[0] = lowByte(uint16_t((settings.StoreVsetpoint * settings.Scells ) * 10));
-    dta[1] = highByte(uint16_t((settings.StoreVsetpoint * settings.Scells ) * 10));
+    if (settings.chargertype == Elcon)
+    {
+      if (mescycl == 0)
+      {
+        dta[0] = highByte(uint16_t(settings.ChargeVsetpoint * settings.Scells * 10));
+        dta[1] = lowByte(uint16_t(settings.ChargeVsetpoint * settings.Scells * 10));
+        dta[2] = highByte(chargecurrent / ncharger);
+        dta[3] = lowByte(chargecurrent / ncharger);
+        dta[4] = 0x00;
+        dta[5] = 0x00;
+        dta[6] = 0x00;
+        dta[7] = 0x00;
+
+        can.send(0x1806E5F4, 1, 0, 8, dta);
+      }
+    }
+
+    if (settings.chargertype == Eltek)
+    {
+      if (mescycl == 0)
+      {
+        dta[0] = 0x01;
+        dta[1] = lowByte(1000);
+        dta[2] = highByte(1000);
+        dta[3] = lowByte(uint16_t(settings.ChargeVsetpoint * settings.Scells * 10));
+        dta[4] = highByte(uint16_t(settings.ChargeVsetpoint * settings.Scells * 10));
+        dta[5] = lowByte(chargecurrent / ncharger);
+        dta[6] = highByte(chargecurrent / ncharger);
+
+        can.send(0x2FF, 0, 0, 7, dta);
+      }
+    }
+    if (settings.chargertype == BrusaNLG5)
+    { if (mescycl == 0)
+      {
+        dta[0] = 0x80;
+        /*
+          if (chargertoggle == 0)
+          {
+          dta[0] = 0x80;
+          chargertoggle++;
+          }
+          else
+          {
+          dta[0] = 0xC0;
+          chargertoggle = 0;
+          }
+        */
+        if (digitalRead(IN2) == LOW)//Gen OFF
+        {
+          dta[1] = highByte(maxac1 * 10);
+          dta[2] = lowByte(maxac1 * 10);
+        }
+        else
+        {
+          dta[1] = highByte(maxac2 * 10);
+          dta[2] = lowByte(maxac2 * 10);
+        }
+        dta[5] = highByte(chargecurrent / ncharger);
+        dta[6] = lowByte(chargecurrent / ncharger);
+        dta[3] = highByte(uint16_t(((settings.ChargeVsetpoint * settings.Scells ) - chargerendbulk) * 10));
+        dta[4] = lowByte(uint16_t(((settings.ChargeVsetpoint * settings.Scells ) - chargerendbulk)  * 10));
+        can.send(chargerid1, 0, 0, 7, dta);
+      }
+      if (mescycl == 1)
+      {
+
+        dta[0] = 0x80;
+        if (digitalRead(IN2) == LOW)//Gen OFF
+        {
+          dta[1] = highByte(maxac1 * 10);
+          dta[2] = lowByte(maxac1 * 10);
+        }
+        else
+        {
+          dta[1] = highByte(maxac2 * 10);
+          dta[2] = lowByte(maxac2 * 10);
+        }
+        dta[3] = highByte(uint16_t(((settings.ChargeVsetpoint * settings.Scells ) - chargerend) * 10));
+        dta[4] = lowByte(uint16_t(((settings.ChargeVsetpoint * settings.Scells ) - chargerend) * 10));
+        dta[5] = highByte(chargecurrent / ncharger);
+        dta[6] = lowByte(chargecurrent / ncharger);
+        can.send(chargerid2, 0, 0, 7, dta);
+      }
+    }
+
+    if (settings.chargertype == ChevyVolt)
+    {
+      if (mescycl == 0)
+      {
+        dta[0] = 0x02; //only HV charging , 0x03 hv and 12V charging
+        dta[1] = 0x00;
+        dta[2] = 0x00;
+        dta[3] = 0x00;
+        can.send(0x30E, 0, 0, 4, dta);
+      }
+      if (mescycl == 1)
+      {
+        dta[0] = 0x40; //fixed
+        if ((chargecurrent * 2) > 255)
+        {
+          dta[1] = 255;
+        }
+        else
+        {
+          dta[1] = (chargecurrent * 2);
+        }
+        if ((settings.ChargeVsetpoint * settings.Scells ) > 200)
+        {
+          dta[2] = highByte(uint16_t((settings.ChargeVsetpoint * settings.Scells ) * 2));
+          dta[3] = lowByte(uint16_t((settings.ChargeVsetpoint * settings.Scells ) * 2));
+        }
+        else
+        {
+          dta[2] = highByte( 400);
+          dta[3] = lowByte( 400);
+        }
+        can.send(0x304, 0, 0, 4, dta);
+      }
+    }
   }
-  dta[2] = lowByte(chargecurrent);
-  dta[3] = highByte(chargecurrent);
-  dta[4] = lowByte(discurrent );
-  dta[5] = highByte(discurrent);
-  dta[6] = lowByte(uint16_t((settings.DischVsetpoint * settings.Scells) * 10));
-  dta[7] = highByte(uint16_t((settings.DischVsetpoint * settings.Scells) * 10));
-  can.send(0x351, 0, 0, 8, dta);
 
-  delay(dela);
-  dta[0] = lowByte(SOC);
-  dta[1] = highByte(SOC);
-  dta[2] = lowByte(SOH);
-  dta[3] = highByte(SOH);
-  dta[4] = lowByte(SOC * 10);
-  dta[5] = highByte(SOC * 10);
-  dta[6] = 0;
-  dta[7] = 0;
-  can.send(0x355, 0, 0, 8, dta);
-
-  delay(dela);
-  dta[0] = lowByte(uint16_t(bms.getPackVoltage() * 100));
-  dta[1] = highByte(uint16_t(bms.getPackVoltage() * 100));
-  dta[2] = lowByte(long(currentact / 100));
-  dta[3] = highByte(long(currentact / 100));
-  dta[4] = lowByte(int16_t(bms.getAvgTemperature() * 10));
-  dta[5] = highByte(int16_t(bms.getAvgTemperature() * 10));
-  dta[6] = 0;
-  dta[7] = 0;
-  can.send(0x356, 0, 0, 8, dta);
-
-  delay(dela);
-  dta[0] = alarm[0];//High temp  Low Voltage | High Voltage
-  dta[1] = alarm[1]; // High Discharge Current | Low Temperature
-  dta[2] = alarm[2]; //Internal Failure | High Charge current
-  dta[3] = alarm[3];// Cell Imbalance
-  dta[4] = warning[0];//High temp  Low Voltage | High Voltage
-  dta[5] = warning[1];// High Discharge Current | Low Temperature
-  dta[6] = warning[2];//Internal Failure | High Charge current
-  dta[7] = warning[3];// Cell Imbalance
-  can.send(0x35A, 0, 0, 8, dta);
-
-  delay(dela);
-  dta[0] = bmsname[0];
-  dta[1] = bmsname[1];
-  dta[2] = bmsname[2];
-  dta[3] = bmsname[3];
-  dta[4] = bmsname[4];
-  dta[5] = bmsname[5];
-  dta[6] = bmsname[6];
-  dta[7] = bmsname[7];
-  can.send(0x35E, 0, 0, 8, dta);
-
-  delay(dela);
-  dta[0] = bmsmanu[0];
-  dta[1] = bmsmanu[1];
-  dta[2] = bmsmanu[2];
-  dta[3] = bmsmanu[3];
-  dta[4] = bmsmanu[4];
-  dta[5] = bmsmanu[5];
-  dta[6] = bmsmanu[6];
-  dta[7] = bmsmanu[7];
-  can.send(0x370, 0, 0, 8, dta);
-
-
-  if (settings.DCDCreq > 0)
+  if (mescycl == 2)
   {
-    delay(dela);
-    dta[0] = 0xA0;
-    dta[1] = settings.DCDCreq * 1.27;
+    if (settings.DCDCreq > 0)
+    {
+      dta[0] = 0xA0;
+      dta[1] = settings.DCDCreq * 1.27;
 
-    can.send(0x1D4, 0, 0, 2, dta);
+      can.send(0x1D4, 0, 0, 2, dta);
+    }
+  }
+  mescycl++;
+  if (mescycl > 2)
+  {
+    mescycl = 0;
   }
 }

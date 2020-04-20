@@ -92,5 +92,6 @@ typedef struct {
   bool disp;
   uint8_t SerialCan;
   uint16_t SerialCanSpeed;
+  uint32_t SerialCanBaud;
   uint8_t DCDCreq;
 } EEPROMSettings;
