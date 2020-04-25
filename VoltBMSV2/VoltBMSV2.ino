@@ -43,7 +43,7 @@ EEPROMSettings settings;
 
 
 /////Version Identifier/////////
-int firmver = 200420;
+int firmver = 250420;
 
 //Curent filter//
 float filterFrequency = 5.0 ;
@@ -263,8 +263,8 @@ uint32_t lastUpdate;
 void setup()
 {
   delay(4000);  //just for easy debugging. It takes a few seconds for USB to come up properly on most OS's
-  pinMode(ACUR1, INPUT);
-  pinMode(ACUR2, INPUT);
+  //pinMode(ACUR1, INPUT);//Not required for Analogue Pins
+  //pinMode(ACUR2, INPUT);
   pinMode(IN1, INPUT);
   pinMode(IN2, INPUT);
   pinMode(IN3, INPUT);
@@ -3358,6 +3358,14 @@ void SetSerialBaud(uint32_t Speed)
       settings.SerialCanBaud = 38400;
       canSerial.flush();
       canSerial.begin(38400);
+      can.exitSettingMode();
+      break;
+
+    case 115200:
+      can.baudRate(4);
+      settings.SerialCanBaud = 115200;
+      canSerial.flush();
+      canSerial.begin(115200);
       can.exitSettingMode();
       break;
 
