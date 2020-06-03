@@ -43,7 +43,7 @@ EEPROMSettings settings;
 
 
 /////Version Identifier/////////
-int firmver = 230520;
+int firmver = 030620;
 
 //Curent filter//
 float filterFrequency = 5.0 ;
@@ -128,6 +128,8 @@ byte rxBuf[8];
 char msgString[128];                        // Array to store serial string
 uint32_t inbox;
 signed long CANmilliamps;
+
+
 int Charged = 0;
 
 //struct can_frame canMsg;
@@ -235,6 +237,7 @@ void loadSettings()
   settings.Precurrent = 1000; //ma before closing main contator
   settings.convhigh = 58; // mV/A current sensor high range channel
   settings.convlow = 643; // mV/A current sensor low range channel
+  settings.changecur = 20000;//mA change overpoint
   settings.offset1 = 1750; //mV mid point of channel 1
   settings.offset2 = 1750;//mV mid point of channel 2
   settings.gaugelow = 50; //empty fuel gauge pwm
@@ -1070,7 +1073,7 @@ void getcurrent()
   {
     if ( settings.cursens == Analoguedual)
     {
-      if (currentact < 19000 && currentact > -19000)
+      if (currentact < settings.changecur && currentact > (settings.changecur * -1))
       {
         sensor = 1;
         adc->adc0->startContinuous(ACUR1);
@@ -1108,7 +1111,7 @@ void getcurrent()
         SERIALCONSOLE.print(" ");
         SERIALCONSOLE.print(settings.offset1);
       }
-      RawCur = int16_t((value * 3300 / adc->adc0->getMaxValue()) - settings.offset1) / (settings.convlow * 0.0001);
+      RawCur = int16_t((value * 3300 / adc->adc0->getMaxValue()) - settings.offset1) / (settings.convlow * 0.0000066);
 
       if (abs((int16_t(value * 3300 / adc->adc0->getMaxValue()) - settings.offset1)) <  settings.CurDead)
       {
@@ -1139,7 +1142,7 @@ void getcurrent()
         SERIALCONSOLE.print("  ");
         SERIALCONSOLE.print(settings.offset2);
       }
-      RawCur = int16_t((value * 3300 / adc->adc0->getMaxValue()) - settings.offset2) / (settings.convhigh * 0.0001);
+      RawCur = int16_t((value * 3300 / adc->adc0->getMaxValue()) - settings.offset2) / (settings.convhigh *  0.0000066);
       if (value < 100 || value > (adc->adc0->getMaxValue() - 100))
       {
         RawCur = 0;
@@ -1155,6 +1158,7 @@ void getcurrent()
       }
     }
   }
+
   if (settings.invertcur == 1)
   {
     RawCur = RawCur * -1;
@@ -1164,9 +1168,18 @@ void getcurrent()
   if (debugCur != 0)
   {
     SERIALCONSOLE.print(lowpassFilter.output());
+    SERIALCONSOLE.print(" | ");
+    SERIALCONSOLE.print(settings.changecur);
+    SERIALCONSOLE.print(" | ");
   }
 
   currentact = lowpassFilter.output();
+
+  if (debugCur != 0)
+  {
+    SERIALCONSOLE.print(currentact);
+    SERIALCONSOLE.print("mA  ");
+  }
 
   if ( settings.cursens == Analoguedual)
   {
@@ -1184,7 +1197,7 @@ void getcurrent()
     }
     if (sensor == 2)
     {
-      if (currentact > 180000 || currentact < -18000 )
+      if (currentact > settings.changecur || currentact < (settings.changecur * -1) )
       {
         ampsecond = ampsecond + ((currentact * (millis() - lasttime) / 1000) / 1000);
         lasttime = millis();
@@ -1209,6 +1222,45 @@ void getcurrent()
   }
   currentact = settings.ncur * currentact;
   RawCur = 0;
+  /*
+    AverageCurrentTotal = AverageCurrentTotal - RunningAverageBuffer[NextRunningAverage];
+
+    RunningAverageBuffer[NextRunningAverage] = currentact;
+
+    if (debugCur != 0)
+    {
+      SERIALCONSOLE.print(" | ");
+      SERIALCONSOLE.print(AverageCurrentTotal);
+      SERIALCONSOLE.print(" | ");
+      SERIALCONSOLE.print(RunningAverageBuffer[NextRunningAverage]);
+      SERIALCONSOLE.print(" | ");
+    }
+    AverageCurrentTotal = AverageCurrentTotal + RunningAverageBuffer[NextRunningAverage];
+    if (debugCur != 0)
+    {
+      SERIALCONSOLE.print(" | ");
+      SERIALCONSOLE.print(AverageCurrentTotal);
+      SERIALCONSOLE.print(" | ");
+    }
+
+    NextRunningAverage = NextRunningAverage + 1;
+
+    if (NextRunningAverage > RunningAverageCount)
+    {
+      NextRunningAverage = 0;
+    }
+
+    AverageCurrent = AverageCurrentTotal / (RunningAverageCount + 1);
+
+    if (debugCur != 0)
+    {
+      SERIALCONSOLE.print(AverageCurrent);
+      SERIALCONSOLE.print(" | ");
+      SERIALCONSOLE.print(AverageCurrentTotal);
+      SERIALCONSOLE.print(" | ");
+      SERIALCONSOLE.print(NextRunningAverage);
+    }
+  */
 }
 
 void updateSOC()
@@ -1787,6 +1839,16 @@ void menu()
         if (Serial.available() > 0)
         {
           settings.ncur = Serial.parseInt();
+        }
+        menuload = 1;
+        incomingByte = 'c';
+        break;
+
+case '8':
+        menuload = 1;
+        if (Serial.available() > 0)
+        {
+          settings.changecur = Serial.parseInt();
         }
         menuload = 1;
         incomingByte = 'c';
@@ -2630,6 +2692,14 @@ void menu()
           SERIALCONSOLE.print(settings.CurDead);
           SERIALCONSOLE.println(" mV");
         }
+        if ( settings.cursens == Analoguedual)
+        {
+
+          SERIALCONSOLE.print("8 - Current Channel ChangeOver:");
+          SERIALCONSOLE.print(settings.changecur * 0.001);
+          SERIALCONSOLE.println(" A");
+        }
+       
         SERIALCONSOLE.println("q - Go back to menu");
         menuload = 2;
         break;
