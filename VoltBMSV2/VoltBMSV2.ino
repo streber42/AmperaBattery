@@ -43,7 +43,7 @@ EEPROMSettings settings;
 
 
 /////Version Identifier/////////
-int firmver = 030620;
+int firmver = 311020;
 
 //Curent filter//
 float filterFrequency = 5.0 ;
@@ -2113,7 +2113,7 @@ case '8':
 
       case '5': //1 Over Voltage Setpoint
         settings.chargertype = settings.chargertype + 1;
-        if (settings.chargertype > 5)
+        if (settings.chargertype > 6)
         {
           settings.chargertype = 0;
         }
