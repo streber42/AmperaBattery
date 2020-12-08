@@ -43,7 +43,7 @@ EEPROMSettings settings;
 
 
 /////Version Identifier/////////
-int firmver = 311020;
+int firmver = 81220;
 
 //Curent filter//
 float filterFrequency = 5.0 ;
@@ -561,7 +561,7 @@ void loop()
       //pwmcomms();
     }
     else
-    {
+{
       switch (bmsstatus)
       {
         case (Boot):
@@ -581,6 +581,7 @@ void loop()
           digitalWrite(OUT2, LOW);
           digitalWrite(OUT1, LOW);//turn off discharge
           contctrl = 0; //turn off out 5 and 6
+          //accurlim = 0;
           if (bms.getHighCellVolt() > settings.balanceVoltage && bms.getHighCellVolt() > bms.getLowCellVolt() + settings.balanceHyst)
           {
             //bms.balanceCells();
@@ -590,7 +591,7 @@ void loop()
           {
             balancecells = 0;
           }
-          if (digitalRead(IN3) == HIGH && (bms.getHighCellVolt() < (settings.ChargeVsetpoint - settings.ChargeHys))) //detect AC present for charging and check not balancing
+          if (digitalRead(IN3) == HIGH && (bms.getHighCellVolt() < (settings.ChargeVsetpoint - settings.ChargeHys)) && bms.getHighTemperature() < (settings.OverTSetpoint - settings.WarnToff)) //detect AC present for charging and check not balancing
           {
             if (settings.ChargerDirect == 1)
             {
@@ -618,11 +619,12 @@ void loop()
 
         case (Drive):
           Discharge = 1;
+          //accurlim = 0;
           if (digitalRead(IN1) == LOW)//Key OFF
           {
             bmsstatus = Ready;
           }
-          if (digitalRead(IN3) == HIGH && (bms.getHighCellVolt() < (settings.ChargeVsetpoint - settings.ChargeHys))) //detect AC present for charging and check not balancing
+          if (digitalRead(IN3) == HIGH && (bms.getHighCellVolt() < (settings.ChargeVsetpoint - settings.ChargeHys)) && bms.getHighTemperature() < (settings.OverTSetpoint - settings.WarnToff)) //detect AC present for charging and check not balancing
           {
             bmsstatus = Charge;
           }
@@ -630,7 +632,25 @@ void loop()
           break;
 
         case (Charge):
+          if (settings.ChargerDirect > 0)
+          {
+            Discharge = 0;
+            digitalWrite(OUT4, LOW);
+            digitalWrite(OUT2, LOW);
+            digitalWrite(OUT1, LOW);//turn off discharge
+            contctrl = 0; //turn off out 5 and 6
+          }
           Discharge = 0;
+          /*
+          if (digitalRead(IN2) == HIGH)
+          {
+            chargecurrentlimit = true;
+          }
+          else
+          {
+            chargecurrentlimit = false;
+          }
+          */
           digitalWrite(OUT3, HIGH);//enable charger
           if (bms.getHighCellVolt() > settings.balanceVoltage)
           {
@@ -641,7 +661,7 @@ void loop()
           {
             balancecells = 0;
           }
-          if (bms.getHighCellVolt() > settings.ChargeVsetpoint)
+          if (bms.getHighCellVolt() > settings.ChargeVsetpoint || bms.getHighTemperature() > settings.OverTSetpoint)
           {
             if (bms.getAvgCellVolt() > (settings.ChargeVsetpoint - settings.ChargeHys))
             {
@@ -673,17 +693,10 @@ void loop()
                       bmsstatus = Charge;
                     }
           */
-          if (digitalRead(IN1) == LOW)//Key OFF
+          if (bms.getLowCellVolt() > settings.UnderVSetpoint && bms.getHighCellVolt() < settings.OverVSetpoint)
           {
-            //if (cellspresent == bms.seriescells()) //detect a fault in cells detected
-            //{
-            if (bms.getLowCellVolt() >= settings.UnderVSetpoint && bms.getHighCellVolt() <= settings.OverVSetpoint)
-            {
-              bmsstatus = Ready;
-            }
-            //}
+            bmsstatus = Ready;
           }
-
           break;
       }
     }
@@ -1352,7 +1365,7 @@ void SOCcharged(int y)
 
 void Prechargecon()
 {
-  if (digitalRead(IN1) == HIGH) //detect Key ON
+  if (digitalRead(IN1) == HIGH || digitalRead(IN3) == HIGH) //detect Key ON or AC present
   {
     digitalWrite(OUT4, HIGH);//Negative Contactor Close
     contctrl = 2;
@@ -1364,7 +1377,21 @@ void Prechargecon()
     {
       digitalWrite(OUT1, HIGH);//Positive Contactor Close
       contctrl = 3;
-      bmsstatus = Drive;
+      if (settings.ChargerDirect == 1)
+      {
+        bmsstatus = Drive;
+      }
+      else
+      {
+        if (digitalRead(IN3) == HIGH)
+        {
+          bmsstatus = Charge;
+        }
+        if (digitalRead(IN1) == HIGH)
+        {
+          bmsstatus = Drive;
+        }
+      }
       digitalWrite(OUT2, LOW);
     }
   }
