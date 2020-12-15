@@ -3575,37 +3575,40 @@ void CanSerial() //communication with Victron system over CAN
         can.send(0x304, 0, 0, 4, dta);
       }
     }
-      if (settings.chargertype == Coda)
-  {
-    msg.id  = 0x050;
-    msg.len = 8;
-    msg.buf[0] = 0x00;
-    msg.buf[1] = 0xDC;
-    if ((settings.ChargeVsetpoint * settings.Scells ) > 200)
+
+    if (settings.chargertype == Coda)
     {
-      msg.buf[2] = highByte(uint16_t((settings.ChargeVsetpoint * settings.Scells ) * 10));
-      msg.buf[3] = lowByte(uint16_t((settings.ChargeVsetpoint * settings.Scells ) * 10));
+      // Data is big endian (MSB, LSB)
+      // Voltage scaling is value * 10
+      msg.id  = 0x050;
+      msg.len = 8;
+      msg.buf[0] = 0x00;
+      msg.buf[1] = 0xDC;
+      if ((settings.ChargeVsetpoint * settings.Scells ) > 200)
+      {
+        msg.buf[2] = highByte(uint16_t((settings.ChargeVsetpoint * settings.Scells ) * 10));
+        msg.buf[3] = lowByte(uint16_t((settings.ChargeVsetpoint * settings.Scells ) * 10));
+      }
+      else
+      {
+        // Voltage minimum is 200V -> 200 * 10 = 2000 -> 0x7D0
+        msg.buf[2] = 0x07;
+        msg.buf[3] = 0xD0;
+      }
+      msg.buf[4] = 0x00;
+      if ((settings.ChargeVsetpoint * settings.Scells)*chargecurrent < 3300)
+      {
+        msg.buf[5] = highByte(uint16_t(((settings.ChargeVsetpoint * settings.Scells) * chargecurrent) / 240));
+        msg.buf[6] = lowByte(uint16_t(((settings.ChargeVsetpoint * settings.Scells) * chargecurrent) / 240));
+      }
+      else //15 A AC limit
+      {
+        msg.buf[5] = 0x00;
+        msg.buf[6] = 0x96;
+      }
+      msg.buf[7] = 0x01; //HV charging
+      Can0.write(msg);
     }
-    else
-    {
-      msg.buf[2] = highByte( 400);
-      msg.buf[3] = lowByte( 400);
-    }
-    msg.buf[4] = 0x00;
-    if ((settings.ChargeVsetpoint * settings.Scells)*chargecurrent < 3300)
-    {
-      msg.buf[5] = highByte(uint16_t(((settings.ChargeVsetpoint * settings.Scells) * chargecurrent) / 240));
-      msg.buf[6] = highByte(uint16_t(((settings.ChargeVsetpoint * settings.Scells) * chargecurrent) / 240));
-    }
-    else //15 A AC limit
-    {
-      msg.buf[5] = 0x00;
-      msg.buf[6] = 0x96;
-    }
-    msg.buf[7] = 0x01; //HV charging
-    Can0.write(msg);
-  }
-    
   }
 
   if (mescycl == 2)
