@@ -43,7 +43,7 @@ EEPROMSettings settings;
 
 
 /////Version Identifier/////////
-int firmver = 151220;
+int firmver = 211220;
 
 //Curent filter//
 float filterFrequency = 5.0 ;
@@ -561,7 +561,7 @@ void loop()
       //pwmcomms();
     }
     else
-{
+    {
       switch (bmsstatus)
       {
         case (Boot):
@@ -642,14 +642,14 @@ void loop()
           }
           Discharge = 0;
           /*
-          if (digitalRead(IN2) == HIGH)
-          {
+            if (digitalRead(IN2) == HIGH)
+            {
             chargecurrentlimit = true;
-          }
-          else
-          {
+            }
+            else
+            {
             chargecurrentlimit = false;
-          }
+            }
           */
           digitalWrite(OUT3, HIGH);//enable charger
           if (bms.getHighCellVolt() > settings.balanceVoltage)
@@ -833,15 +833,19 @@ void loop()
       chargercomms();
       if (settings.SerialCan == 1)
       {
-        SerialCanCharger();
+        CanSerial();
       }
     }
     else
     {
       if (settings.SerialCan == 1)
+      {
         CanSerial();
+      }
       else
+      {
         chargercomms();
+      }
     }
 
   }
@@ -1846,7 +1850,7 @@ void menu()
         incomingByte = 'c';
         break;
 
-case '8':
+      case '8':
         menuload = 1;
         if (Serial.available() > 0)
         {
@@ -2701,7 +2705,7 @@ case '8':
           SERIALCONSOLE.print(settings.changecur * 0.001);
           SERIALCONSOLE.println(" A");
         }
-       
+
         SERIALCONSOLE.println("q - Go back to menu");
         menuload = 2;
         break;
@@ -3351,11 +3355,6 @@ void chargercomms()
     }
     Can0.write(msg);
   }
-}
-
-void SerialCanCharger()
-{
-
 }
 
 void SerialCanRecieve()
