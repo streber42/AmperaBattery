@@ -3216,6 +3216,16 @@ void dashupdate()
   Serial2.write(0xff);  // We always have to send this three lines after each command sent to the nextion display.
   Serial2.write(0xff);
   Serial2.write(0xff);
+  Serial2.print("celldelta.val=");
+  Serial2.print(bms.getHighCellVolt() * 1000 - bms.getLowCellVolt() * 1000, 0);
+  Serial2.write(0xff);  // We always have to send this three lines after each command sent to the nextion display.
+  Serial2.write(0xff);
+  Serial2.write(0xff);
+  Serial2.print("cellbal.val=");
+  Serial2.print(balancecells);
+  Serial2.write(0xff);  // We always have to send this three lines after each command sent to the nextion display.
+  Serial2.write(0xff);
+  Serial2.write(0xff);
   Serial2.print("firm.val=");
   Serial2.print(firmver);
   Serial2.write(0xff);  // We always have to send this three lines after each command sent to the nextion display.
