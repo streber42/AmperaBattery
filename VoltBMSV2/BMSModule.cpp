@@ -3,7 +3,6 @@
 //#include "BMSUtil.h"
 #include "Logger.h"
 
-
 BMSModule::BMSModule()
 {
   for (int i = 0; i < 32; i++)
@@ -37,98 +36,64 @@ void BMSModule::clearmodule()
   moduleAddress = 0;
 }
 
+float BMSModule::decodeCellVoltage(int cell, CAN_message_t &msg, int msb, int lsb)
+{
+  if ((((msg.buf[msb] & 0x0F) << 8) + msg.buf[lsb]) > 0)
+  {
+    cellVolt[cell] = float((((msg.buf[msb] & 0x0F) << 8) + msg.buf[lsb]) * 0.00125);
+  }
+}
+
 void BMSModule::decodecan(int Id, CAN_message_t &msg)
 {
-  if (moduleAddress < 0xC)
+  if (0x1 < moduleAddress && moduleAddress < 0xC) // handle 8-cell frames
   {
     switch (Id)
     {
-      case 0x60:
-        if ((((msg.buf[0] & 0x7F)  << 8)   + msg.buf[1]) > 0)
-        {
-          cellVolt[1] = float((((msg.buf[0] & 0x0F)  << 8)   + msg.buf[1]) * 0.00125);
-        }
-        if (((msg.buf[2]  << 8)   + msg.buf[3]) > 0)
-        {
-          cellVolt[2] = float((((msg.buf[2] & 0x0F)  << 8)   + msg.buf[3]) * 0.00125);
-        }
-        if (((msg.buf[4]  << 8)   + msg.buf[5]) > 0)
-        {
-          cellVolt[3] = float((((msg.buf[4] & 0x0F)  << 8)   + msg.buf[5]) * 0.00125);
-        }
-        if (((msg.buf[6]  << 8)   + msg.buf[7]) > 0)
-        {
-          cellVolt[4] = float((((msg.buf[6] & 0x0F)  << 8)   + msg.buf[7]) * 0.00125);
-        }
-        break;
+    case 0x60:
+      decodeCellVoltage(1, msg, 0, 1);
+      decodeCellVoltage(2, msg, 2, 3);
+      decodeCellVoltage(3, msg, 4, 5);
+      decodeCellVoltage(4, msg, 6, 7);
+      break;
 
-      case 0x70:
-        if ((((msg.buf[0] & 0x0F)  << 8)   + msg.buf[1]) > 0)
-        {
-          cellVolt[5] = float((((msg.buf[0] & 0x0F) << 8)  + msg.buf[1]) * 0.00125);
-        }
-        if (((msg.buf[2]  << 8)   + msg.buf[3]) > 0)
-        {
-          cellVolt[6] = float((((msg.buf[2] & 0x0F) << 8)  + msg.buf[3]) * 0.00125);
-        }
-        if (((msg.buf[4]  << 8)   + msg.buf[5]) > 0)
-        {
-          cellVolt[7] = float((((msg.buf[4] & 0x0F) << 8)  + msg.buf[5]) * 0.00125);
-        }
-        if (((msg.buf[6]  << 8)   + msg.buf[7]) > 0)
-        {
-          cellVolt[8] = float((((msg.buf[6] & 0x0F) << 8) + msg.buf[7]) * 0.00125);
-        }
-        break;
+    case 0x70:
+      decodeCellVoltage(5, msg, 0, 1);
+      decodeCellVoltage(6, msg, 2, 3);
+      decodeCellVoltage(7, msg, 4, 5);
+      decodeCellVoltage(8, msg, 6, 7);
+      break;
 
-      case 0xE0:
-        temperatures[0] = float(((msg.buf[6] << 8) + msg.buf[7]) * -0.0324 + 150);
-        break;
+    case 0xE0:
+      temperatures[0] = float(((msg.buf[6] << 8) + msg.buf[7]) * -0.0324 + 150);
+      break;
 
-      default:
-        break;
+    default:
+      break;
     }
   }
-  else
+  else // handle 6-cell frames
   {
     switch (Id)
     {
-      case 0x60:
-        if ((((msg.buf[0] & 0x0F)  << 8)   + msg.buf[1]) > 0)
-        {
-          cellVolt[1] = float((((msg.buf[0] & 0x0F)  << 8)   + msg.buf[1]) * 0.00125);
-        }
-        if ((((msg.buf[2] & 0x0F)  << 8)   + msg.buf[3]) > 0)
-        {
-          cellVolt[2] = float((((msg.buf[2] & 0x0F)  << 8)   + msg.buf[3]) * 0.00125);
-        }
-        if ((((msg.buf[4] & 0x0F)  << 8)   + msg.buf[5]) > 0)
-        {
-          cellVolt[3] = float((((msg.buf[4] & 0x0F)  << 8)   + msg.buf[5]) * 0.00125);
-        }
-        break;
+    case 0x60:
+      decodeCellVoltage(1, msg, 0, 1);
+      decodeCellVoltage(2, msg, 2, 3);
+      decodeCellVoltage(3, msg, 4, 5);
+      break;
 
-      case 0x70:
-        if ((((msg.buf[0] & 0x7F)  << 8)   + msg.buf[1]) > 0)
-        {
-          cellVolt[5] = float((((msg.buf[0] & 0x7F) << 8)  + msg.buf[1]) * 0.00125);
-        }
-        if (((msg.buf[2]  << 8)   + msg.buf[3]) > 0)
-        {
-          cellVolt[6] = float(((msg.buf[2] << 8)  + msg.buf[3]) * 0.00125);
-        }
-        if (((msg.buf[4]  << 8)   + msg.buf[5]) > 0)
-        {
-          cellVolt[7] = float(((msg.buf[4] << 8)  + msg.buf[5]) * 0.00125);
-        }
-        break;
+    case 0x70:
+      decodeCellVoltage(4, msg, 0, 1);
+      decodeCellVoltage(5, msg, 2, 3);
+      decodeCellVoltage(6, msg, 4, 5);
+      break;
 
-      case 0xE0:
-        temperatures[0] = float(((msg.buf[6] << 8) + msg.buf[7]) * -0.0324 + 150);
-        break;
+    case 0xE0:
+      temperatures[0] = float(((msg.buf[6] << 8) + msg.buf[7]) * -0.0324 + 150);
+      break;
 
-      default:
-        break;
+    default:
+      break;
     }
   }
   /*
@@ -173,17 +138,19 @@ uint8_t BMSModule::getCUVCells()
   return CUVFaults;
 }
 
-
 float BMSModule::getCellVoltage(int cell)
 {
-  if (cell < 0 || cell > 32) return 0.0f;
+  if (cell < 0 || cell > 32)
+    return 0.0f;
   return cellVolt[cell];
 }
 
 float BMSModule::getLowCellV()
 {
   float lowVal = 10.0f;
-  for (int i = 0; i < 32; i++) if (cellVolt[i] < lowVal && cellVolt[i] > IgnoreCell) lowVal = cellVolt[i];
+  for (int i = 0; i < 32; i++)
+    if (cellVolt[i] < lowVal && cellVolt[i] > IgnoreCell)
+      lowVal = cellVolt[i];
   return lowVal;
 }
 
@@ -191,9 +158,10 @@ float BMSModule::getHighCellV()
 {
   float hiVal = 0.0f;
   for (int i = 0; i < 32; i++)
-    if (cellVolt[i] > IgnoreCell && cellVolt[i] < 5.0)
+    if (cellVolt[i] > IgnoreCell && cellVolt[i] < 60.0)
     {
-      if (cellVolt[i] > hiVal) hiVal = cellVolt[i];
+      if (cellVolt[i] > hiVal)
+        hiVal = cellVolt[i];
     }
   return hiVal;
 }
@@ -235,13 +203,15 @@ float BMSModule::getLowestModuleVolt()
 
 float BMSModule::getHighestCellVolt(int cell)
 {
-  if (cell < 0 || cell > 32) return 0.0f;
+  if (cell < 0 || cell > 32)
+    return 0.0f;
   return highestCellVolt[cell];
 }
 
 float BMSModule::getLowestCellVolt(int cell)
 {
-  if (cell < 0 || cell > 32) return 0.0f;
+  if (cell < 0 || cell > 32)
+    return 0.0f;
   return lowestCellVolt[cell];
 }
 
@@ -285,13 +255,15 @@ float BMSModule::getModuleVoltage()
 
 float BMSModule::getTemperature(int temp)
 {
-  if (temp < 0 || temp > 2) return 0.0f;
+  if (temp < 0 || temp > 2)
+    return 0.0f;
   return temperatures[temp];
 }
 
 void BMSModule::setAddress(int newAddr)
 {
-  if (newAddr < 0 || newAddr > MAX_MODULE_ADDR) return;
+  if (newAddr < 0 || newAddr > MAX_MODULE_ADDR)
+    return;
   moduleAddress = newAddr;
 }
 
