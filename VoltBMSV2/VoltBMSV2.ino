@@ -838,8 +838,10 @@ void loop()
     }
     else
     {
-
-      CanSerial();
+      if (settings.SerialCan == 1)
+        CanSerial();
+      else
+        chargercomms();
     }
 
   }
