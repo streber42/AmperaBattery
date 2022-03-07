@@ -43,7 +43,7 @@ EEPROMSettings settings;
 
 
 /////Version Identifier/////////
-int firmver = 211220;
+int firmver = 220307;
 
 //Curent filter//
 float filterFrequency = 5.0 ;
@@ -584,7 +584,7 @@ void loop()
           //accurlim = 0;
           if (bms.getHighCellVolt() > settings.balanceVoltage && bms.getHighCellVolt() > bms.getLowCellVolt() + settings.balanceHyst)
           {
-            bms.balanceCells();
+            //bms.balanceCells();
             balancecells = 1;
           }
           else
@@ -654,7 +654,7 @@ void loop()
           digitalWrite(OUT3, HIGH);//enable charger
           if (bms.getHighCellVolt() > settings.balanceVoltage)
           {
-            bms.balanceCells();
+            //bms.balanceCells();
             balancecells = 1;
           }
           else
@@ -742,6 +742,11 @@ void loop()
       {
         UnderTime = millis() + settings.UnderDur;
       }
+    }
+
+    if (balancecells == 1)
+    {
+      bms.balanceCells();
     }
 
     if (debug != 0)
