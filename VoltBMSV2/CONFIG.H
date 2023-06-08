@@ -86,7 +86,6 @@ typedef struct {
   int ncur;
   int chargertype;
   int chargerspd;
-  uint16_t UnderDur;
   uint16_t CurDead;
   float DisTaper;
   bool ChargerDirect;
@@ -95,4 +94,5 @@ typedef struct {
   uint16_t SerialCanSpeed;
   uint32_t SerialCanBaud;
   uint8_t DCDCreq;
+    uint16_t triptime;
 } EEPROMSettings;
