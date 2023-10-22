@@ -43,7 +43,7 @@ EEPROMSettings settings;
 
 
 /////Version Identifier/////////
-int firmver = 230608;
+int firmver = 231022;
 
 //Curent filter//
 float filterFrequency = 5.0;
@@ -383,6 +383,7 @@ void loop() {
   if (SERIALCONSOLE.available() > 0) {
     menu();
   }
+
   if (settings.SerialCan == 1) {
     SerialCanRecieve();
   }
@@ -631,8 +632,10 @@ void loop() {
     }
   }
 
+
   if (millis() - looptime > 1000) {
     looptime = millis();
+  
     bms.getAllVoltTemp();
     //UV  check
     if (settings.ESSmode == 1) {
@@ -708,6 +711,7 @@ void loop() {
     VEcan();
 
     sendcommand();
+
     if (cellspresent == 0 && SOCset == 1) {
       cellspresent = bms.seriescells();
       bms.setSensors(settings.IgnoreTemp, settings.IgnoreVolt);
@@ -726,9 +730,11 @@ void loop() {
       dashupdate();
     }
 
+
     resetwdog();
   }
 
+/*
   if (millis() - cleartime > 5000) {
     /*
       //bms.clearmodules(); // Not functional
@@ -752,9 +758,11 @@ void loop() {
       //bmsstatus = Error;
       ErrorReason = 4;
       }
-    */
+    
     cleartime = millis();
   }
+*/
+
   if (millis() - looptime1 > settings.chargerspd) {
     looptime1 = millis();
     if (settings.ESSmode == 1) {
@@ -3057,6 +3065,7 @@ void SetSerialBaud(uint32_t Speed) {
 
 void CanSerial()  //communication with Victron system over CAN
 {
+  /*
   if (bmsstatus == Charge) {
     if (settings.chargertype == Elcon) {
       if (mescycl == 0) {
@@ -3100,7 +3109,7 @@ void CanSerial()  //communication with Victron system over CAN
           dta[0] = 0xC0;
           chargertoggle = 0;
           }
-        */
+        *//*
         if (digitalRead(IN2) == LOW)  //Gen OFF
         {
           dta[1] = highByte(maxac1 * 10);
@@ -3189,6 +3198,7 @@ void CanSerial()  //communication with Victron system over CAN
     }
   }
 
+
   if (mescycl == 2) {
     if (settings.DCDCreq > 0) {
       dta[0] = 0xA0;
@@ -3201,4 +3211,5 @@ void CanSerial()  //communication with Victron system over CAN
   if (mescycl > 2) {
     mescycl = 0;
   }
+  */
 }
